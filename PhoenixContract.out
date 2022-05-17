@@ -2,7 +2,7 @@
 TLC2 Version 2.16 of 31 December 2020 (rev: cdddf55)
 @!@!@ENDMSG 2262 @!@!@
 @!@!@STARTMSG 2187:0 @!@!@
-Running breadth-first search Model-Checking with fp 73 and seed 7985538884728262138 with 1 worker on 8 cores with 3442MB heap and 64MB offheap memory (Linux 5.10.114-1-MANJARO amd64, Oracle Corporation 1.8.0_332 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 59 and seed 1595610864328485075 with 1 worker on 8 cores with 3442MB heap and 64MB offheap memory (Linux 5.10.114-1-MANJARO amd64, Oracle Corporation 1.8.0_332 x86_64, MSBDiskFPSet, DiskStateQueue).
 @!@!@ENDMSG 2187 @!@!@
 @!@!@STARTMSG 2220:0 @!@!@
 Starting SANY...
@@ -19,23 +19,17 @@ Semantic processing of module PhoenixContract
 SANY finished.
 @!@!@ENDMSG 2219 @!@!@
 @!@!@STARTMSG 2185:0 @!@!@
-Starting... (2022-05-17 20:43:56)
+Starting... (2022-05-17 21:13:52)
 @!@!@ENDMSG 2185 @!@!@
 @!@!@STARTMSG 2189:0 @!@!@
 Computing initial states...
 @!@!@ENDMSG 2189 @!@!@
 @!@!@STARTMSG 2190:0 @!@!@
-Finished computing initial states: 1 distinct state generated at 2022-05-17 20:43:57.
+Finished computing initial states: 1 distinct state generated at 2022-05-17 21:13:52.
 @!@!@ENDMSG 2190 @!@!@
-@!@!@STARTMSG 1000:1 @!@!@
-TLC threw an unexpected exception.
-This was probably caused by an error in the spec or model.
-See the User Output or TLC Console for clues to what happened.
-The exception was a java.lang.RuntimeException
-: @!@!@STARTMSG 2170:0 @!@!@
-Argument mismatch in operator application.%1
-@!@!@ENDMSG 2170 @!@!@
-@!@!@ENDMSG 1000 @!@!@
+@!@!@STARTMSG 2114:1 @!@!@
+Deadlock reached.
+@!@!@ENDMSG 2114 @!@!@
 @!@!@STARTMSG 2121:1 @!@!@
 The behavior up to this point is:
 @!@!@ENDMSG 2121 @!@!@
@@ -50,115 +44,149 @@ The behavior up to this point is:
 /\ delay = 3
 
 @!@!@ENDMSG 2217 @!@!@
-@!@!@STARTMSG 2103:1 @!@!@
-The error occurred when TLC was evaluating the nested
-expressions at the following positions:
-0. Line 97, column 6 to line 99, column 48 in PhoenixContract
+@!@!@STARTMSG 2217:4 @!@!@
+2: <Tick line 54, col 5 to line 56, col 99 of module PhoenixContract>
+/\ tier_two_addresses = {}
+/\ balance = 0
+/\ unlock_block = 0
+/\ tier_one_addresses = {0}
+/\ requests = 0
+/\ block_number = 1
+/\ delay = 3
 
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+3: <Tick line 54, col 5 to line 56, col 99 of module PhoenixContract>
+/\ tier_two_addresses = {}
+/\ balance = 0
+/\ unlock_block = 0
+/\ tier_one_addresses = {0}
+/\ requests = 0
+/\ block_number = 2
+/\ delay = 3
 
-@!@!@ENDMSG 2103 @!@!@
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+4: <Tick line 54, col 5 to line 56, col 99 of module PhoenixContract>
+/\ tier_two_addresses = {}
+/\ balance = 0
+/\ unlock_block = 0
+/\ tier_one_addresses = {0}
+/\ requests = 0
+/\ block_number = 3
+/\ delay = 3
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+5: <Tick line 54, col 5 to line 56, col 99 of module PhoenixContract>
+/\ tier_two_addresses = {}
+/\ balance = 0
+/\ unlock_block = 0
+/\ tier_one_addresses = {0}
+/\ requests = 0
+/\ block_number = 4
+/\ delay = 3
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+6: <Tick line 54, col 5 to line 56, col 99 of module PhoenixContract>
+/\ tier_two_addresses = {}
+/\ balance = 0
+/\ unlock_block = 0
+/\ tier_one_addresses = {0}
+/\ requests = 0
+/\ block_number = 5
+/\ delay = 3
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+7: <Deposit line 62, col 5 to line 65, col 104 of module PhoenixContract>
+/\ tier_two_addresses = {}
+/\ balance = 1
+/\ unlock_block = 0
+/\ tier_one_addresses = {0}
+/\ requests = 0
+/\ block_number = 5
+/\ delay = 3
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+8: <Deposit line 62, col 5 to line 65, col 104 of module PhoenixContract>
+/\ tier_two_addresses = {}
+/\ balance = 3
+/\ unlock_block = 0
+/\ tier_one_addresses = {0}
+/\ requests = 0
+/\ block_number = 5
+/\ delay = 3
+
+@!@!@ENDMSG 2217 @!@!@
 @!@!@STARTMSG 2201:0 @!@!@
-The coverage statistics at 2022-05-17 20:43:57
+The coverage statistics at 2022-05-17 21:13:52
 @!@!@ENDMSG 2201 @!@!@
 @!@!@STARTMSG 2773:0 @!@!@
-<Init line 45, col 1 to line 45, col 4 of module PhoenixContract>: 1:1
+<Init line 44, col 1 to line 44, col 4 of module PhoenixContract>: 2:2
 @!@!@ENDMSG 2773 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  line 46, col 3 to line 52, col 17 of module PhoenixContract: 1
+  line 45, col 5 to line 51, col 19 of module PhoenixContract: 2
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2772:0 @!@!@
-<Tick line 54, col 1 to line 54, col 4 of module PhoenixContract>: 1:2
+<Tick line 53, col 1 to line 53, col 4 of module PhoenixContract>: 5:25
 @!@!@ENDMSG 2772 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  line 55, col 6 to line 55, col 41 of module PhoenixContract: 2
+  line 54, col 8 to line 54, col 43 of module PhoenixContract: 25
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  line 56, col 6 to line 56, col 37 of module PhoenixContract: 2
+  |line 54, col 8 to line 54, col 23 of module PhoenixContract: 31
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  line 57, col 6 to line 57, col 97 of module PhoenixContract: 2
+  |line 54, col 28 to line 54, col 43 of module PhoenixContract: 31
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 55, col 8 to line 55, col 39 of module PhoenixContract: 25
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 56, col 8 to line 56, col 99 of module PhoenixContract: 25
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2772:0 @!@!@
-<Deposit line 62, col 1 to line 62, col 15 of module PhoenixContract>: 3:6
+<Deposit line 61, col 1 to line 61, col 15 of module PhoenixContract>: 18:33
 @!@!@ENDMSG 2772 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  line 63, col 8 to line 63, col 17 of module PhoenixContract: 6
+  line 62, col 8 to line 62, col 17 of module PhoenixContract: 33
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  |line 63, col 8 to line 63, col 13 of module PhoenixContract: 8
+  |line 62, col 8 to line 62, col 13 of module PhoenixContract: 77
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  line 64, col 8 to line 64, col 34 of module PhoenixContract: 6
+  line 63, col 8 to line 63, col 40 of module PhoenixContract: 33
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  line 65, col 8 to line 65, col 104 of module PhoenixContract: 6
-@!@!@ENDMSG 2221 @!@!@
-@!@!@STARTMSG 2772:0 @!@!@
-<Withdraw line 72, col 1 to line 72, col 12 of module PhoenixContract>: 0:0
-@!@!@ENDMSG 2772 @!@!@
-@!@!@STARTMSG 2221:0 @!@!@
-  line 72, col 17 to line 72, col 30 of module PhoenixContract: 0
-@!@!@ENDMSG 2221 @!@!@
-@!@!@STARTMSG 2772:0 @!@!@
-<CancelRequest line 75, col 1 to line 75, col 27 of module PhoenixContract>: 0:0
-@!@!@ENDMSG 2772 @!@!@
-@!@!@STARTMSG 2221:0 @!@!@
-  line 75, col 32 to line 75, col 45 of module PhoenixContract: 0
-@!@!@ENDMSG 2221 @!@!@
-@!@!@STARTMSG 2772:0 @!@!@
-<AddTierOneAddress line 87, col 1 to line 87, col 41 of module PhoenixContract>: 0:0
-@!@!@ENDMSG 2772 @!@!@
-@!@!@STARTMSG 2221:0 @!@!@
-  line 87, col 46 to line 87, col 59 of module PhoenixContract: 0
-@!@!@ENDMSG 2221 @!@!@
-@!@!@STARTMSG 2772:0 @!@!@
-<AddTierTwoAddress line 89, col 1 to line 89, col 41 of module PhoenixContract>: 0:0
-@!@!@ENDMSG 2772 @!@!@
-@!@!@STARTMSG 2221:0 @!@!@
-  line 89, col 46 to line 89, col 59 of module PhoenixContract: 0
-@!@!@ENDMSG 2221 @!@!@
-@!@!@STARTMSG 2772:0 @!@!@
-<RemoveTierTwoAddress line 91, col 1 to line 91, col 47 of module PhoenixContract>: 0:0
-@!@!@ENDMSG 2772 @!@!@
-@!@!@STARTMSG 2221:0 @!@!@
-  line 91, col 52 to line 91, col 65 of module PhoenixContract: 0
-@!@!@ENDMSG 2221 @!@!@
-@!@!@STARTMSG 2772:0 @!@!@
-<Next line 93, col 1 to line 93, col 4 of module PhoenixContract (97 6 99 48)>: 0:0
-@!@!@ENDMSG 2772 @!@!@
-@!@!@STARTMSG 2221:0 @!@!@
-  line 70, col 8 to line 70, col 84 of module PhoenixContract: 0
-@!@!@ENDMSG 2221 @!@!@
-@!@!@STARTMSG 2775:0 @!@!@
-  line 98, col 9 to line 98, col 62 of module PhoenixContract: 2:8
-@!@!@ENDMSG 2775 @!@!@
-@!@!@STARTMSG 2772:0 @!@!@
-<Next line 93, col 1 to line 93, col 4 of module PhoenixContract (104 6 105 35)>: 0:0
-@!@!@ENDMSG 2772 @!@!@
-@!@!@STARTMSG 2221:0 @!@!@
-  line 79, col 8 to line 79, col 21 of module PhoenixContract: 0
+  |line 63, col 8 to line 63, col 23 of module PhoenixContract: 51
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  line 80, col 8 to line 80, col 103 of module PhoenixContract: 0
+  |line 63, col 28 to line 63, col 40 of module PhoenixContract: 51
 @!@!@ENDMSG 2221 @!@!@
-@!@!@STARTMSG 2772:0 @!@!@
-<Next line 93, col 1 to line 93, col 4 of module PhoenixContract (106 6 107 35)>: 0:0
-@!@!@ENDMSG 2772 @!@!@
-@!@!@STARTMSG 2772:0 @!@!@
-<Next line 93, col 1 to line 93, col 4 of module PhoenixContract (108 6 109 40)>: 0:0
-@!@!@ENDMSG 2772 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  line 85, col 37 to line 85, col 50 of module PhoenixContract: 0
+  line 64, col 8 to line 64, col 34 of module PhoenixContract: 33
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 65, col 8 to line 65, col 104 of module PhoenixContract: 33
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2202:0 @!@!@
 End of statistics.
 @!@!@ENDMSG 2202 @!@!@
 @!@!@STARTMSG 2200:0 @!@!@
-Progress(2) at 2022-05-17 20:43:57: 5 states generated (646 s/min), 5 distinct states found (646 ds/min), 4 states left on queue.
+Progress(8) at 2022-05-17 21:13:52: 51 states generated (6,524 s/min), 24 distinct states found (3,070 ds/min), 0 states left on queue.
 @!@!@ENDMSG 2200 @!@!@
 @!@!@STARTMSG 2199:0 @!@!@
-5 states generated, 5 distinct states found, 4 states left on queue.
+51 states generated, 24 distinct states found, 0 states left on queue.
 @!@!@ENDMSG 2199 @!@!@
+@!@!@STARTMSG 2194:0 @!@!@
+The depth of the complete state graph search is 8.
+@!@!@ENDMSG 2194 @!@!@
+@!@!@STARTMSG 2268:0 @!@!@
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 3 and the 95th percentile is 3).
+@!@!@ENDMSG 2268 @!@!@
 @!@!@STARTMSG 2186:0 @!@!@
-Finished in 472ms at (2022-05-17 20:43:57)
+Finished in 474ms at (2022-05-17 21:13:52)
 @!@!@ENDMSG 2186 @!@!@
