@@ -7,10 +7,15 @@ CONSTANTS
     ADDRESSES,
     MONEY,
     MAX_BLOCK_NUMBER,
-    REQUEST_IDS
+    REQUEST_IDS,
+    DELAY_CONST
 
+ASSUMPTION BALANCE_LIMIT \in Nat
 ASSUMPTION ADDRESSES \subseteq Nat
 ASSUMPTION MONEY \subseteq Nat
+ASSUMPTION MAX_BLOCK_NUMBER \in Nat
+ASSUMPTION REQUEST_IDS \subseteq Nat
+ASSUMPTION DELAY_CONST \in Nat
 
 VARIABLES
     balance,                          \* F
@@ -19,9 +24,10 @@ VARIABLES
     tier_two_addresses,               \* T2
     delay,                            \* D
     unlock_block,                     \* U
-    requests                          \* R
+    requests,                         \* R
+    previous_command
 
-vars == <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests>>
+vars == <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, previous_command>>
 
 request_type == \* (id, amount, creation, initiator)
     REQUEST_IDS 
@@ -29,6 +35,52 @@ request_type == \* (id, amount, creation, initiator)
     \* \X NETWORK_ADDRESSES 
     \X (0..MAX_BLOCK_NUMBER)
     \X tier_two_addresses
+
+\* log_deposit_type ==
+\*     {"deposit"}
+\*     \X MONEY    
+        
+\* log_request_type ==
+\*     {"request"}
+\*     \X ADDRESSES
+\*     \X REQUEST_IDS
+\*     \X MONEY  
+
+\* log_withdraw_type ==
+\*     {"withdraw"}
+\*     \X REQUEST_IDS
+
+\* log_cancel_request_type ==
+\*     {"withdraw"}
+\*     \X ADDRESSES \X REQUEST_IDS
+
+\* log_cancel_all_requests_type ==
+\*     {"withdraw"}
+\*     \X tier_one_addresses
+
+\* log_self_request_type ==
+\*     {"withdraw"}
+\*     \X tier_two_addresses
+
+\* log_lock_type ==
+\*     {"withdraw"}
+\*     \X ADDRESSES \X (0..MAX_BLOCK_NUMBER)
+
+\* log_add_tier_one_type ==
+\*     {"withdraw"}
+\*     \X ADDRESSES \X ADDRESSES
+
+\* log_add_tier_two_type ==
+\*     {"withdraw"}
+\*     \X ADDRESSES \X ADDRESSES
+
+\* log_remove_tier_two_type ==
+\*     {"withdraw"}
+\*     \X ADDRESSES \X ADDRESSES
+
+\* log_type ==
+\*     log_deposit_type
+\*     \union log_request_type
 
 TypeOK ==
     /\ balance \in Nat
@@ -39,20 +91,22 @@ TypeOK ==
     /\ delay \in 0..MAX_BLOCK_NUMBER
     /\ unlock_block \in 0..MAX_BLOCK_NUMBER
     /\ requests \in SUBSET request_type
+    \* /\ logs \in SUBSET log_type
 
 Init ==
     /\ balance = 0
     /\ block_number = 0
     /\ tier_one_addresses = {0}
     /\ tier_two_addresses = {}
-    /\ delay = 3
+    /\ delay = DELAY_CONST
     /\ unlock_block = 0
     /\ requests = {}
+    /\ previous_command = <<>>
 
 Tick ==
     /\ block_number + 1 <= MAX_BLOCK_NUMBER
     /\ block_number' = block_number + 1
-    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests>>
+    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, previous_command>>
 
 --------------------------------------
 \* Actions
@@ -74,6 +128,7 @@ GetIds ==
             {x[1]} \union red[rs \ {x}]
     IN red[requests]
 Deposit(amount) ==
+    /\ previous_command' = (<<"deposit">>) 
     /\ amount > 0
     /\ balance + amount <= BALANCE_LIMIT
     /\ balance' = balance + amount
@@ -88,6 +143,7 @@ Sum == \* (id, amount, creation, initiator)
     IN red[requests]
 
 Request(address2, id, amount) ==
+    /\ previous_command' = (<<"request">>) 
     /\ amount > 0
     /\ Sum + amount <= balance
     /\ address2 \in tier_two_addresses
@@ -132,6 +188,7 @@ GetWithoutID(id) == \* (id, amount, creation, initiator)
     IN red[requests]   
 
 Withdraw(id) == 
+    /\ previous_command' = (<<"withdraw">>) 
     /\ unlock_block <= block_number
     /\ Count(id) = 1
     /\ GetCreationByID(id) + delay <= block_number
@@ -140,11 +197,13 @@ Withdraw(id) ==
     /\ UNCHANGED <<block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
  
 CancelRequest(address1, id) == 
+    /\ previous_command' = (<<"cancel_request">>) 
     /\ address1 \in tier_one_addresses
     /\ requests' = requests \ GetWithoutID(id)
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 CancelAllRequests(address1) ==
+    /\ previous_command' =(<<"cancel_all_requests">>) 
     /\ address1 \in tier_one_addresses
     /\ requests' = {}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
@@ -159,11 +218,13 @@ GetWithoutInitiator(initiator) == \* (id, amount, creation, initiator)
     IN red[requests]
 
 CancelSelfRequest(address2) ==
+    /\ previous_command' = (<<"cancel_self_request">>) 
     /\ address2 \in tier_two_addresses
     /\ requests' = GetWithoutInitiator(address2)
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 Lock(address1, new_unlock_block) ==
+    /\ previous_command' = (<<"lock">>) 
     /\ address1 \in tier_one_addresses
     /\ new_unlock_block > unlock_block
     /\ new_unlock_block > block_number
@@ -171,6 +232,7 @@ Lock(address1, new_unlock_block) ==
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, requests>>
     
 AddTierOneAddress(address1, new_address1) == 
+    /\ previous_command' = (<<"add_tier_one">>) 
     /\ address1 \in tier_one_addresses
     /\ new_address1 \notin tier_one_addresses
     /\ new_address1 \notin tier_two_addresses
@@ -178,6 +240,7 @@ AddTierOneAddress(address1, new_address1) ==
     /\ UNCHANGED <<balance, block_number, tier_two_addresses, delay, unlock_block, requests>>
 
 AddTierTwoAddress(address1, new_address2) == 
+    /\ previous_command' = (<<"add_tier_two">>) 
     /\ address1 \in tier_one_addresses
     /\ new_address2 \notin tier_one_addresses
     /\ new_address2 \notin tier_two_addresses
@@ -185,6 +248,7 @@ AddTierTwoAddress(address1, new_address2) ==
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, delay, unlock_block, requests>>
 
 RemoveTierTwoAddress(address1, remove_address2) == 
+    /\ previous_command' = (<<"remove_tier_two">>) 
     /\ address1 \in tier_one_addresses
     /\ remove_address2 \in tier_two_addresses
     /\ tier_two_addresses' = tier_two_addresses \ {remove_address2}
@@ -220,6 +284,30 @@ Spec == Init /\ [][Next]_vars
 \* WF = weak fairness
 
 \* liveness
+
+--------------------------------------
+\* PROPERTIES
+
+\* 1. Base layer
+\* 1.1.
+\* 1.2.
+\* 1.3.
+CannotChangeDelay ==
+    \E d \in 0..MAX_BLOCK_NUMBER: [](delay = d)
+
+\* 1.4. [](address1 \in tier_one_addresses)
+CannotRemoveTierOneAddress == TRUE
+    \* \E d \in 0..MAX_BLOCK_NUMBER: [](delay = d)
+    
+    \* <>(\E address1 \in tier_one_addresses: (address1 \in tier_one_addresses))
+\* 1.5.
+
+\* 2. Key separation layer
+\* 2.1.
+TierOneAndTwoSeparated == 
+    [](tier_one_addresses \intersect  tier_two_addresses = {})
+
+
 
 --------------------------------------
 
