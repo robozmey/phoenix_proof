@@ -101,7 +101,7 @@ Init ==
     /\ delay = DELAY_CONST
     /\ unlock_block = 0
     /\ requests = {}
-    /\ previous_command = <<>>
+    /\ previous_command = <<"initial command">>
 
 Tick ==
     /\ block_number + 1 <= MAX_BLOCK_NUMBER
@@ -290,6 +290,8 @@ Spec == Init /\ [][Next]_vars
 
 \* 1. Base layer
 \* 1.1.
+CannotWithdrawBeforeDelay ==
+    [][previous_command'[1] = "withdraw" => \A r \in requests: (r[1] = previous_command'[2] => r[3] + delay <= block_number)]_previous_command
 \* 1.2.
 \* 1.3.
 CannotChangeDelay ==
@@ -309,6 +311,11 @@ CannotRemoveTierOneAddress ==
 \* 2.1.
 TierOneAndTwoSeparated == 
     [](tier_one_addresses \intersect  tier_two_addresses = {})
+\* 2.2
+OnlyTierOneCanAddTierOne ==
+    [][previous_command'[1] = "add_tier_one" => previous_command'[2] \in tier_one_addresses]_previous_command
+\* 2.3
+
 
 \* 3. Recovery layer
 \* 3.1.
