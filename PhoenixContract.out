@@ -2,7 +2,7 @@
 TLC2 Version 2.16 of 31 December 2020 (rev: cdddf55)
 @!@!@ENDMSG 2262 @!@!@
 @!@!@STARTMSG 2187:0 @!@!@
-Running breadth-first search Model-Checking with fp 99 and seed -4117415531337260781 with 1 worker on 8 cores with 3442MB heap and 64MB offheap memory (Linux 5.10.114-1-MANJARO amd64, Oracle Corporation 1.8.0_332 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 28 and seed 1639837746812083738 with 1 worker on 8 cores with 3442MB heap and 64MB offheap memory (Linux 5.10.114-1-MANJARO amd64, Oracle Corporation 1.8.0_332 x86_64, MSBDiskFPSet, DiskStateQueue).
 @!@!@ENDMSG 2187 @!@!@
 @!@!@STARTMSG 2220:0 @!@!@
 Starting SANY...
@@ -21,7 +21,7 @@ Semantic processing of module PhoenixContract
 SANY finished.
 @!@!@ENDMSG 2219 @!@!@
 @!@!@STARTMSG 2185:0 @!@!@
-Starting... (2022-05-22 00:50:51)
+Starting... (2022-06-01 19:37:32)
 @!@!@ENDMSG 2185 @!@!@
 @!@!@STARTMSG 2212:0 @!@!@
 Implied-temporal checking--satisfiability problem has 1 branches.
@@ -30,35 +30,35 @@ Implied-temporal checking--satisfiability problem has 1 branches.
 Computing initial states...
 @!@!@ENDMSG 2189 @!@!@
 @!@!@STARTMSG 2190:0 @!@!@
-Finished computing initial states: 1 distinct state generated at 2022-05-22 00:50:51.
+Finished computing initial states: 1 distinct state generated at 2022-06-01 19:37:33.
 @!@!@ENDMSG 2190 @!@!@
 @!@!@STARTMSG 2192:0 @!@!@
-Checking temporal properties for the current state space with 17428 total distinct states at (2022-05-22 00:50:54)
+Checking temporal properties for the current state space with 16810 total distinct states at (2022-06-01 19:37:36)
 @!@!@ENDMSG 2192 @!@!@
 @!@!@STARTMSG 2267:0 @!@!@
-Finished checking temporal properties in 00s at 2022-05-22 00:50:54
+Finished checking temporal properties in 00s at 2022-06-01 19:37:36
 @!@!@ENDMSG 2267 @!@!@
 @!@!@STARTMSG 2200:0 @!@!@
-Progress(10) at 2022-05-22 00:50:54: 158,082 states generated (158,082 s/min), 17,428 distinct states found (17,428 ds/min), 5,359 states left on queue.
+Progress(10) at 2022-06-01 19:37:36: 148,709 states generated (148,709 s/min), 16,810 distinct states found (16,810 ds/min), 5,512 states left on queue.
 @!@!@ENDMSG 2200 @!@!@
 @!@!@STARTMSG 2200:0 @!@!@
-Progress(12) at 2022-05-22 00:50:57: 284,299 states generated, 23,163 distinct states found, 0 states left on queue.
+Progress(12) at 2022-06-01 19:37:39: 284,299 states generated, 23,163 distinct states found, 0 states left on queue.
 @!@!@ENDMSG 2200 @!@!@
 @!@!@STARTMSG 2192:0 @!@!@
-Checking temporal properties for the complete state space with 23163 total distinct states at (2022-05-22 00:50:57)
+Checking temporal properties for the complete state space with 23163 total distinct states at (2022-06-01 19:37:39)
 @!@!@ENDMSG 2192 @!@!@
 @!@!@STARTMSG 2267:0 @!@!@
-Finished checking temporal properties in 01s at 2022-05-22 00:50:58
+Finished checking temporal properties in 01s at 2022-06-01 19:37:40
 @!@!@ENDMSG 2267 @!@!@
 @!@!@STARTMSG 2193:0 @!@!@
 Model checking completed. No error has been found.
   Estimates of the probability that TLC did not check all reachable states
   because two distinct states had the same fingerprint:
   calculated (optimistic):  val = 3.3E-10
-  based on the actual fingerprints:  val = 2.6E-11
+  based on the actual fingerprints:  val = 9.9E-12
 @!@!@ENDMSG 2193 @!@!@
 @!@!@STARTMSG 2201:0 @!@!@
-The coverage statistics at 2022-05-22 00:50:58
+The coverage statistics at 2022-06-01 19:37:40
 @!@!@ENDMSG 2201 @!@!@
 @!@!@STARTMSG 2773:0 @!@!@
 <Init line 96, col 1 to line 96, col 4 of module PhoenixContract>: 1:1
@@ -502,16 +502,16 @@ The coverage statistics at 2022-05-22 00:50:58
   line 86, col 5 to line 93, col 39 of module PhoenixContract: 23163
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2774:0 @!@!@
-<Action line 308, col 8 to line 308, col 61 of module PhoenixContract>
+<Action line 311, col 8 to line 311, col 61 of module PhoenixContract>
 @!@!@ENDMSG 2774 @!@!@
 @!@!@STARTMSG 2221:0 @!@!@
-  line 308, col 8 to line 308, col 61 of module PhoenixContract: 23163
+  line 311, col 8 to line 311, col 61 of module PhoenixContract: 23163
 @!@!@ENDMSG 2221 @!@!@
 @!@!@STARTMSG 2202:0 @!@!@
 End of statistics.
 @!@!@ENDMSG 2202 @!@!@
 @!@!@STARTMSG 2200:0 @!@!@
-Progress(12) at 2022-05-22 00:50:58: 284,299 states generated (2,114,533 s/min), 23,163 distinct states found (172,279 ds/min), 0 states left on queue.
+Progress(12) at 2022-06-01 19:37:40: 284,299 states generated (2,128,517 s/min), 23,163 distinct states found (173,419 ds/min), 0 states left on queue.
 @!@!@ENDMSG 2200 @!@!@
 @!@!@STARTMSG 2199:0 @!@!@
 284299 states generated, 23163 distinct states found, 0 states left on queue.
@@ -523,5 +523,5 @@ The depth of the complete state graph search is 12.
 The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 19 and the 95th percentile is 5).
 @!@!@ENDMSG 2268 @!@!@
 @!@!@STARTMSG 2186:0 @!@!@
-Finished in 8077ms at (2022-05-22 00:50:58)
+Finished in 8025ms at (2022-06-01 19:37:40)
 @!@!@ENDMSG 2186 @!@!@

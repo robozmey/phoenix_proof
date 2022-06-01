@@ -296,9 +296,12 @@ CannotChangeDelay ==
     \E d \in 0..MAX_BLOCK_NUMBER: [](delay = d)
 
 \* 1.4. [](address1 \in tier_one_addresses)
-CannotRemoveTierOneAddress == TRUE
-    \* \E d \in 0..MAX_BLOCK_NUMBER: [](delay = d)
-    
+CannotRemoveTierOneAddress == 
+    [][\A a \in ADDRESSES: a \in tier_one_addresses => a \in tier_one_addresses]_<<tier_one_addresses>>
+    \* \E a \in ADDRESSES: a \in tier_one_addresses
+    \* \A a \in ADDRESSES: a \in tier_one_addresses => a \in tier_one_addresses
+    \* \A a \in ADDRESSES: <>(a \in tier_one_addresses) => <>[](a \in tier_one_addresses)
+    \* \A a \in ADDRESSES: [](a \in tier_one_addresses => a \in tier_one_addresses')
     \* <>(\E address1 \in tier_one_addresses: (address1 \in tier_one_addresses))
 \* 1.5.
 
