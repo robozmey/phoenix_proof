@@ -6,11 +6,14 @@ CONSTANTS
     INITIAL_TIER_ONE_KEY,
     INITIAL_TIER_TWO_KEY,
     BALANCE_LIMIT,
+    OWNER_ADDRESS,
+    ADVERSARY_ADDRESS,
     ADDRESSES,
     MONEY,
     MAX_BLOCK_NUMBER,
     REQUEST_IDS,
-    DELAY_CONST
+    DELAY_CONST,
+    NETWORK_ADDRESSES
 
 ASSUMPTION BALANCE_LIMIT \in Nat
 ASSUMPTION ADDRESSES \subseteq Nat
@@ -20,6 +23,8 @@ ASSUMPTION REQUEST_IDS \subseteq Nat
 ASSUMPTION DELAY_CONST \in Nat
 ASSUMPTION INITIAL_TIER_ONE_KEY \in ADDRESSES
 ASSUMPTION INITIAL_TIER_TWO_KEY \in ADDRESSES
+ASSUMPTION OWNER_ADDRESS \in NETWORK_ADDRESSES
+ASSUMPTION ADVERSARY_ADDRESS \in NETWORK_ADDRESSES
 
 VARIABLES
     balance,                          \* F
@@ -31,15 +36,15 @@ VARIABLES
     requests,                         \* R
     previous_command
 
-request_type == \* (id, amount, creation, initiator)
+request_type == \* (id, amount, creation, initiator, recipient)
     REQUEST_IDS 
     \X MONEY 
-    \* \X NETWORK_ADDRESSES 
     \X (0..MAX_BLOCK_NUMBER)
     \X tier_two_addresses
+    \X ADDRESSES
 
 TypeOK ==
-    /\ balance \in Nat
+    /\ balance \in [NETWORK_ADDRESSES -> 0..BALANCE_LIMIT]
     /\ block_number \in 0..MAX_BLOCK_NUMBER
     /\ tier_one_addresses \in SUBSET ADDRESSES
     /\ tier_two_addresses \in SUBSET ADDRESSES
@@ -47,58 +52,11 @@ TypeOK ==
     /\ delay \in 0..MAX_BLOCK_NUMBER
     /\ unlock_block \in 0..MAX_BLOCK_NUMBER
     /\ requests \in SUBSET request_type
-    \* /\ logs \in SUBSET log_type
 
 vars == <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, previous_command>>
 
-\* log_deposit_type ==
-\*     {"deposit"}
-\*     \X MONEY    
-        
-\* log_request_type ==
-\*     {"request"}
-\*     \X ADDRESSES
-\*     \X REQUEST_IDS
-\*     \X MONEY  
-
-\* log_withdraw_type ==
-\*     {"withdraw"}
-\*     \X REQUEST_IDS
-
-\* log_cancel_request_type ==
-\*     {"withdraw"}
-\*     \X ADDRESSES \X REQUEST_IDS
-
-\* log_cancel_all_requests_type ==
-\*     {"withdraw"}
-\*     \X tier_one_addresses
-
-\* log_self_request_type ==
-\*     {"withdraw"}
-\*     \X tier_two_addresses
-
-\* log_lock_type ==
-\*     {"withdraw"}
-\*     \X ADDRESSES \X (0..MAX_BLOCK_NUMBER)
-
-\* log_add_tier_one_type ==
-\*     {"withdraw"}
-\*     \X ADDRESSES \X ADDRESSES
-
-\* log_add_tier_two_type ==
-\*     {"withdraw"}
-\*     \X ADDRESSES \X ADDRESSES
-
-\* log_remove_tier_two_type ==
-\*     {"withdraw"}
-\*     \X ADDRESSES \X ADDRESSES
-
-\* log_type ==
-\*     log_deposit_type
-\*     \union log_request_type
-
 Init ==
-    /\ balance = 0
+    /\ balance = [addr \in NETWORK_ADDRESSES |-> 0]
     /\ block_number = 0
     /\ tier_one_addresses = {INITIAL_TIER_ONE_KEY}
     /\ tier_two_addresses = {INITIAL_TIER_TWO_KEY}
@@ -134,32 +92,36 @@ GetCreationByID(id) ==
 GetAmountByID(id) ==
     GetRequestById(id)[2]
 
+GetAddressByID(id) ==
+    GetRequestById(id)[5]
+
 FilterNotByInitiator(initiator) ==
     {req \in requests: req[4] /= initiator}
                 
 Deposit(amount) ==
     /\ previous_command' = (<<"deposit", amount>>) 
     /\ amount > 0
-    /\ balance + amount <= BALANCE_LIMIT
-    /\ balance' = balance + amount
+    /\ balance[OWNER_ADDRESS] + amount <= BALANCE_LIMIT
+    /\ balance' = [balance EXCEPT ![OWNER_ADDRESS] = @ + amount]
     /\ UNCHANGED <<tier_one_addresses, tier_two_addresses, delay, unlock_block, requests>>
 
-Request(address2, id, amount) ==
+Request(address2, amount, recipient) ==
     /\ previous_command' = (<<"request", address2>>) 
     /\ amount > 0
-    /\ Sum + amount <= balance
+    /\ Sum + amount <= balance[OWNER_ADDRESS]
+    /\ balance[recipient] + amount <= BALANCE_LIMIT
     /\ address2 \in tier_two_addresses
-    /\ id \notin GetIds
-    /\ requests' = requests \union {<<id, amount, block_number, address2>>}
+    /\ requests' = requests \union {<<block_number, amount, block_number, address2, recipient>>}
     /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 Withdraw(id) == 
     /\ previous_command' = (<<"withdraw", id>>) 
     /\ unlock_block <= block_number
     /\ id \in GetIds
+    /\ GetAddressByID(id) /= OWNER_ADDRESS
     /\ GetCreationByID(id) + delay <= block_number
-    /\ id \in GetIds
-    /\ balance' = balance - GetAmountByID(id)
+    /\ LET balance1 == [balance EXCEPT ![OWNER_ADDRESS] = @ - GetAmountByID(id)]
+       IN balance' = [balance1 EXCEPT ![GetAddressByID(id)] = @ + GetAmountByID(id)]
     /\ requests' = requests \ {GetRequestById(id)}
     /\ UNCHANGED <<tier_one_addresses, tier_two_addresses, delay, unlock_block>>
  
@@ -218,8 +180,8 @@ RemoveTierTwoAddress(address1, remove_address2) ==
 Action ==
     \/ \E amount \in MONEY: 
         Deposit(amount)
-    \/ \E <<address2, id, amount>> \in ADDRESSES \X REQUEST_IDS \X MONEY:
-        Request(address2, id, amount)
+    \/ \E <<address2, amount, recipient>> \in ADDRESSES \X MONEY \X NETWORK_ADDRESSES:
+        Request(address2, amount, recipient)
     \/ \E id \in REQUEST_IDS: 
         Withdraw(id) 
     \/ \E <<address1, id>> \in ADDRESSES \X REQUEST_IDS: 
@@ -300,14 +262,13 @@ OnlyTierOneCanAddTierTwo ==
 \* 4. Tier-one minimization layer
 \* 4.1.
 BalanceEnoughtToWithdrawAll ==
-    [](balance >= Sum)
-
-
+    [](balance[OWNER_ADDRESS] >= Sum)
 
 --------------------------------------
 
-ADDRESSES_const == 0..2
-MONEY_const == 0..2
-REQUEST_IDS_const == 0..2
+ADDRESSES_const == 0..4
+NETWORK_ADDRESSES_const == 1..3
+MONEY_const == 1..1
+REQUEST_IDS_const == 0..MAX_BLOCK_NUMBER
 
 ====
