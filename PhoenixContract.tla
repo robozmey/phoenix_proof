@@ -41,7 +41,7 @@ request_type == \* (id, amount, creation, initiator, recipient)
     \X MONEY 
     \X (0..MAX_BLOCK_NUMBER)
     \X tier_two_addresses
-    \X ADDRESSES
+    \X NETWORK_ADDRESSES
 
 TypeOK ==
     /\ balance \in [NETWORK_ADDRESSES -> 0..BALANCE_LIMIT]
@@ -106,6 +106,8 @@ Deposit(amount) ==
     /\ UNCHANGED <<tier_one_addresses, tier_two_addresses, delay, unlock_block, requests>>
 
 Request(address2, amount, recipient) ==
+    /\ recipient /= OWNER_ADDRESS
+    /\ recipient /= 0
     /\ previous_command' = (<<"request", address2>>) 
     /\ amount > 0
     /\ Sum + amount <= balance[OWNER_ADDRESS]
