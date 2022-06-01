@@ -128,7 +128,7 @@ GetIds ==
             {x[1]} \union red[rs \ {x}]
     IN red[requests]
 Deposit(amount) ==
-    /\ previous_command' = (<<"deposit">>) 
+    /\ previous_command' = (<<"deposit", amount>>) 
     /\ amount > 0
     /\ balance + amount <= BALANCE_LIMIT
     /\ balance' = balance + amount
@@ -143,7 +143,7 @@ Sum == \* (id, amount, creation, initiator)
     IN red[requests]
 
 Request(address2, id, amount) ==
-    /\ previous_command' = (<<"request">>) 
+    /\ previous_command' = (<<"request", address2>>) 
     /\ amount > 0
     /\ Sum + amount <= balance
     /\ address2 \in tier_two_addresses
@@ -188,7 +188,7 @@ GetWithoutID(id) == \* (id, amount, creation, initiator)
     IN red[requests]   
 
 Withdraw(id) == 
-    /\ previous_command' = (<<"withdraw">>) 
+    /\ previous_command' = (<<"withdraw", id>>) 
     /\ unlock_block <= block_number
     /\ Count(id) = 1
     /\ GetCreationByID(id) + delay <= block_number
@@ -197,13 +197,13 @@ Withdraw(id) ==
     /\ UNCHANGED <<block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
  
 CancelRequest(address1, id) == 
-    /\ previous_command' = (<<"cancel_request">>) 
+    /\ previous_command' = (<<"cancel_request", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ requests' = requests \ GetWithoutID(id)
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 CancelAllRequests(address1) ==
-    /\ previous_command' =(<<"cancel_all_requests">>) 
+    /\ previous_command' =(<<"cancel_all_requests", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ requests' = {}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
@@ -224,7 +224,7 @@ CancelSelfRequest(address2) ==
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 Lock(address1, new_unlock_block) ==
-    /\ previous_command' = (<<"lock">>) 
+    /\ previous_command' = (<<"lock", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ new_unlock_block > unlock_block
     /\ new_unlock_block > block_number
@@ -232,7 +232,7 @@ Lock(address1, new_unlock_block) ==
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, requests>>
     
 AddTierOneAddress(address1, new_address1) == 
-    /\ previous_command' = (<<"add_tier_one">>) 
+    /\ previous_command' = (<<"add_tier_one", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ new_address1 \notin tier_one_addresses
     /\ new_address1 \notin tier_two_addresses
@@ -240,7 +240,7 @@ AddTierOneAddress(address1, new_address1) ==
     /\ UNCHANGED <<balance, block_number, tier_two_addresses, delay, unlock_block, requests>>
 
 AddTierTwoAddress(address1, new_address2) == 
-    /\ previous_command' = (<<"add_tier_two">>) 
+    /\ previous_command' = (<<"add_tier_two", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ new_address2 \notin tier_one_addresses
     /\ new_address2 \notin tier_two_addresses
@@ -248,7 +248,7 @@ AddTierTwoAddress(address1, new_address2) ==
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, delay, unlock_block, requests>>
 
 RemoveTierTwoAddress(address1, remove_address2) == 
-    /\ previous_command' = (<<"remove_tier_two">>) 
+    /\ previous_command' = (<<"remove_tier_two", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ remove_address2 \in tier_two_addresses
     /\ tier_two_addresses' = tier_two_addresses \ {remove_address2}
@@ -318,6 +318,15 @@ MoneyCannotLeaveLocked ==
 \* 3.2. 
 UnlockTimeOnlyIncrease ==
     [][unlock_block <= unlock_block]_block_number
+\* 3.3. 
+OnlyTierOneCanLock ==
+    [][previous_command'[1] = "lock" => previous_command'[2] \in tier_one_addresses]_previous_command
+\* 3.4.
+OnlyTierOneCanRemoveTierTwo ==
+    [][previous_command'[1] = "remove_tier_two" => previous_command'[2] \in tier_one_addresses]_previous_command
+\* 3.5.  
+OnlyTierOneCanAddTierTwo ==
+    [][previous_command'[1] = "add_tier_two" => previous_command'[2] \in tier_one_addresses]_previous_command
 
 \* 4. Tier-one minimization layer
 \* 4.1.
