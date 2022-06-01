@@ -267,7 +267,11 @@ OnlyTierOneCanAddTierTwo ==
 BalanceEnoughtToWithdrawAll ==
     [](balance[OWNER_ADDRESS] >= Sum)
 \* 4.2.
+CannotSendMoneyToItself ==
+    [](\A r \in requests: r[5] /= OWNER_ADDRESS)
 \* 4.3.
+CannotSendMoneyToZero ==
+    [](\A r \in requests: r[5] /= 0)
 \* 4.4.
 RemovingTierTwoRemovesItsRequests ==
     [][previous_command'[1] = "remove_tier_two" => {req \in requests': req[4] /= previous_command'[2]} = requests']_<<previous_command, requests>>
