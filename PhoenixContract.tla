@@ -310,6 +310,20 @@ CannotRemoveTierOneAddress ==
 TierOneAndTwoSeparated == 
     [](tier_one_addresses \intersect  tier_two_addresses = {})
 
+\* 3. Recovery layer
+\* 3.1.
+MoneyCannotLeaveLocked ==
+    \* [][block_number < unlock_block => balance <= balance']_balance
+    [][block_number < unlock_block => previous_command'[1] /= "withdraw"]_previous_command
+\* 3.2. 
+UnlockTimeOnlyIncrease ==
+    [][unlock_block <= unlock_block]_block_number
+
+\* 4. Tier-one minimization layer
+\* 4.1.
+BalanceEnoughtToWithdrawAll ==
+    [](balance >= Sum)
+
 
 
 --------------------------------------
