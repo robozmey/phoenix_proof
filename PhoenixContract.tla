@@ -139,9 +139,10 @@ CancelAllRequests(address1) ==
     /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 CancelSelfRequest(address2, id) ==
-    /\ previous_command' = (<<"cancel_self_request">>) 
+    /\ previous_command' = (<<"cancel_self_request", address2, id>>) 
     /\ address2 \in tier_two_addresses
     /\ id \in GetIds
+    /\ GetRequestById(id)[4] = address2
     /\ requests' = requests \ {GetRequestById(id)}
     /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
@@ -220,25 +221,27 @@ CannotWithdrawBeforeDelay ==
 \* 1.3.
 CannotChangeDelay ==
     \E d \in 0..MAX_BLOCK_NUMBER: [](delay = d)
-
-\* 1.4. [](address1 \in tier_one_addresses)
+\* 1.4.
 CannotRemoveTierOneAddress == 
     [][\A a \in ADDRESSES: a \in tier_one_addresses => a \in tier_one_addresses']_<<tier_one_addresses>>
-    \* \E a \in ADDRESSES: a \in tier_one_addresses
-    \* \A a \in ADDRESSES: a \in tier_one_addresses => a \in tier_one_addresses
-    \* \A a \in ADDRESSES: <>(a \in tier_one_addresses) => <>[](a \in tier_one_addresses)
-    \* \A a \in ADDRESSES: [](a \in tier_one_addresses => a \in tier_one_addresses')
-    \* <>(\E address1 \in tier_one_addresses: (address1 \in tier_one_addresses))
 \* 1.5.
 
 \* 2. Key separation layer
 \* 2.1.
 TierOneAndTwoSeparated == 
     [](tier_one_addresses \intersect  tier_two_addresses = {})
-\* 2.2
+\* 2.2.
 OnlyTierOneCanAddTierOne ==
     [][previous_command'[1] = "add_tier_one" => previous_command'[2] \in tier_one_addresses]_previous_command
-\* 2.3
+\* 2.3.
+OnlyTierTwoCanRequest ==
+    [][previous_command'[1] = "request" => previous_command'[2] \in tier_two_addresses]_previous_command
+\* 2.4.
+TierTwoCanCancelOnlyItselfRequests ==
+    [][previous_command'[1] = "cancel_self_request" => 
+            /\ previous_command'[2] \in tier_two_addresses 
+            /\ GetRequestById(previous_command'[3])[4] = previous_command'[2]]_previous_command
+    
 
 
 \* 3. Recovery layer
@@ -262,7 +265,16 @@ OnlyTierOneCanAddTierTwo ==
 \* 4. Tier-one minimization layer
 \* 4.1.
 BalanceEnoughtToWithdrawAll ==
+<<<<<<< HEAD
     [](balance[OWNER_ADDRESS] >= Sum)
+=======
+    [](balance >= Sum)
+\* 4.2.
+\* 4.3.
+\* 4.4.
+
+
+>>>>>>> 5db3740d5a01a5a5779897f9a888b4a04607d78a
 
 --------------------------------------
 
