@@ -114,18 +114,13 @@ Tick ==
 --------------------------------------
 \* Actions
 
-ReduceMapRange(map, op(_,_), ini) ==
-    LET dom == DOMAIN map IN 
-    LET red[d \in SUBSET dom] ==
-        IF d = {} THEN ini 
-        ELSE
-            LET x == CHOOSE x \in d: TRUE IN 
-            op(map[x], red[d \ {x}])
-    IN red[dom]
-
-Sum ==
-    LET op(req, acc) == req[2] + acc
-    IN ReduceMapRange(requests, op, 0)
+Sum == \* (id, amount, creation, initiator)
+    LET red[rs \in SUBSET requests] == 
+        IF rs = {} THEN 0
+        ELSE 
+            LET x == CHOOSE x \in rs: TRUE IN 
+                x[2] + red[rs \ {x}]
+    IN red[requests]
 
 GetIds == 
     {req[1] : req \in requests}
@@ -147,7 +142,7 @@ Deposit(amount) ==
     /\ amount > 0
     /\ balance + amount <= BALANCE_LIMIT
     /\ balance' = balance + amount
-    /\ UNCHANGED <<block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests>>
+    /\ UNCHANGED <<tier_one_addresses, tier_two_addresses, delay, unlock_block, requests>>
 
 Request(address2, id, amount) ==
     /\ previous_command' = (<<"request", address2>>) 
@@ -156,34 +151,37 @@ Request(address2, id, amount) ==
     /\ address2 \in tier_two_addresses
     /\ id \notin GetIds
     /\ requests' = requests \union {<<id, amount, block_number, address2>>}
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
+    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 Withdraw(id) == 
     /\ previous_command' = (<<"withdraw", id>>) 
     /\ unlock_block <= block_number
     /\ id \in GetIds
     /\ GetCreationByID(id) + delay <= block_number
+    /\ id \in GetIds
     /\ balance' = balance - GetAmountByID(id)
     /\ requests' = requests \ {GetRequestById(id)}
-    /\ UNCHANGED <<block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
+    /\ UNCHANGED <<tier_one_addresses, tier_two_addresses, delay, unlock_block>>
  
 CancelRequest(address1, id) == 
     /\ previous_command' = (<<"cancel_request", address1>>) 
     /\ address1 \in tier_one_addresses
+    /\ id \in GetIds
     /\ requests' = requests \ {GetRequestById(id)}
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
+    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 CancelAllRequests(address1) ==
     /\ previous_command' =(<<"cancel_all_requests", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ requests' = {}
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
+    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 CancelSelfRequest(address2, id) ==
     /\ previous_command' = (<<"cancel_self_request">>) 
     /\ address2 \in tier_two_addresses
+    /\ id \in GetIds
     /\ requests' = requests \ {GetRequestById(id)}
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
+    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 Lock(address1, new_unlock_block) ==
     /\ previous_command' = (<<"lock", address1>>) 
@@ -191,7 +189,7 @@ Lock(address1, new_unlock_block) ==
     /\ new_unlock_block > unlock_block
     /\ new_unlock_block > block_number
     /\ unlock_block' = new_unlock_block
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, requests>>
+    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, requests>>
     
 AddTierOneAddress(address1, new_address1) == 
     /\ previous_command' = (<<"add_tier_one", address1>>) 
@@ -199,7 +197,7 @@ AddTierOneAddress(address1, new_address1) ==
     /\ new_address1 \notin tier_one_addresses
     /\ new_address1 \notin tier_two_addresses
     /\ tier_one_addresses' = tier_one_addresses \union {new_address1}
-    /\ UNCHANGED <<balance, block_number, tier_two_addresses, delay, unlock_block, requests>>
+    /\ UNCHANGED <<balance, tier_two_addresses, delay, unlock_block, requests>>
 
 AddTierTwoAddress(address1, new_address2) == 
     /\ previous_command' = (<<"add_tier_two", address1>>) 
@@ -207,7 +205,7 @@ AddTierTwoAddress(address1, new_address2) ==
     /\ new_address2 \notin tier_one_addresses
     /\ new_address2 \notin tier_two_addresses
     /\ tier_two_addresses' = tier_two_addresses \union {new_address2}
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, delay, unlock_block, requests>>
+    /\ UNCHANGED <<balance, tier_one_addresses, delay, unlock_block, requests>>
 
 RemoveTierTwoAddress(address1, remove_address2) == 
     /\ previous_command' = (<<"remove_tier_two", address1>>) 
@@ -215,11 +213,9 @@ RemoveTierTwoAddress(address1, remove_address2) ==
     /\ remove_address2 \in tier_two_addresses
     /\ tier_two_addresses' = tier_two_addresses \ {remove_address2}
     /\ requests' = FilterNotByInitiator(remove_address2)
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, delay, unlock_block>>
-    
+    /\ UNCHANGED <<balance, tier_one_addresses, delay, unlock_block>>
 
-Next ==
-    \/ Tick
+Action ==
     \/ \E amount \in MONEY: 
         Deposit(amount)
     \/ \E <<address2, id, amount>> \in ADDRESSES \X REQUEST_IDS \X MONEY:
@@ -239,7 +235,11 @@ Next ==
     \/ \E <<address1, new_address2>> \in ADDRESSES \X ADDRESSES: 
         AddTierTwoAddress(address1, new_address2)
     \/ \E <<address1, remove_address2>> \in ADDRESSES \X ADDRESSES: 
-        RemoveTierTwoAddress(address1, remove_address2)
+        RemoveTierTwoAddress(address1, remove_address2) 
+
+Next ==
+    /\ Tick
+    /\ Action
 
 Spec == Init /\ [][Next]_vars
 
