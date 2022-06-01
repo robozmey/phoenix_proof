@@ -265,16 +265,15 @@ OnlyTierOneCanAddTierTwo ==
 \* 4. Tier-one minimization layer
 \* 4.1.
 BalanceEnoughtToWithdrawAll ==
-<<<<<<< HEAD
     [](balance[OWNER_ADDRESS] >= Sum)
-=======
-    [](balance >= Sum)
 \* 4.2.
 \* 4.3.
 \* 4.4.
+RemovingTierTwoRemovesItsRequests ==
+    [][previous_command'[1] = "remove_tier_two" => {req \in requests': req[4] /= previous_command'[2]} = requests']_<<previous_command, requests>>
 
 
->>>>>>> 5db3740d5a01a5a5779897f9a888b4a04607d78a
+
 
 --------------------------------------
 
