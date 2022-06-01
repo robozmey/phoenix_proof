@@ -3,6 +3,8 @@
 EXTENDS Integers, Sequences, FiniteSets
 
 CONSTANTS
+    INITIAL_TIER_ONE_KEY,
+    INITIAL_TIER_TWO_KEY,
     BALANCE_LIMIT,
     ADDRESSES,
     MONEY,
@@ -16,6 +18,8 @@ ASSUMPTION MONEY \subseteq Nat
 ASSUMPTION MAX_BLOCK_NUMBER \in Nat
 ASSUMPTION REQUEST_IDS \subseteq Nat
 ASSUMPTION DELAY_CONST \in Nat
+ASSUMPTION INITIAL_TIER_ONE_KEY \in ADDRESSES
+ASSUMPTION INITIAL_TIER_TWO_KEY \in ADDRESSES
 
 VARIABLES
     balance,                          \* F
@@ -27,14 +31,25 @@ VARIABLES
     requests,                         \* R
     previous_command
 
-vars == <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, previous_command>>
-
 request_type == \* (id, amount, creation, initiator)
     REQUEST_IDS 
     \X MONEY 
     \* \X NETWORK_ADDRESSES 
     \X (0..MAX_BLOCK_NUMBER)
     \X tier_two_addresses
+
+TypeOK ==
+    /\ balance \in Nat
+    /\ block_number \in 0..MAX_BLOCK_NUMBER
+    /\ tier_one_addresses \in SUBSET ADDRESSES
+    /\ tier_two_addresses \in SUBSET ADDRESSES
+    /\ (tier_one_addresses \intersect tier_two_addresses) = {}
+    /\ delay \in 0..MAX_BLOCK_NUMBER
+    /\ unlock_block \in 0..MAX_BLOCK_NUMBER
+    /\ requests \in SUBSET request_type
+    \* /\ logs \in SUBSET log_type
+
+vars == <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, previous_command>>
 
 \* log_deposit_type ==
 \*     {"deposit"}
@@ -82,22 +97,11 @@ request_type == \* (id, amount, creation, initiator)
 \*     log_deposit_type
 \*     \union log_request_type
 
-TypeOK ==
-    /\ balance \in Nat
-    /\ block_number \in 0..MAX_BLOCK_NUMBER
-    /\ tier_one_addresses \in SUBSET ADDRESSES
-    /\ tier_two_addresses \in SUBSET ADDRESSES
-    /\ (tier_one_addresses \intersect tier_two_addresses) = {}
-    /\ delay \in 0..MAX_BLOCK_NUMBER
-    /\ unlock_block \in 0..MAX_BLOCK_NUMBER
-    /\ requests \in SUBSET request_type
-    \* /\ logs \in SUBSET log_type
-
 Init ==
     /\ balance = 0
     /\ block_number = 0
-    /\ tier_one_addresses = {0}
-    /\ tier_two_addresses = {}
+    /\ tier_one_addresses = {INITIAL_TIER_ONE_KEY}
+    /\ tier_two_addresses = {INITIAL_TIER_TWO_KEY}
     /\ delay = DELAY_CONST
     /\ unlock_block = 0
     /\ requests = {}
@@ -106,13 +110,12 @@ Init ==
 Tick ==
     /\ block_number + 1 <= MAX_BLOCK_NUMBER
     /\ block_number' = block_number + 1
-    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, previous_command>>
 
 --------------------------------------
 \* Actions
 
 ReduceMapRange(map, op(_,_), ini) ==
-    LET dom == DOMAIN  map IN 
+    LET dom == DOMAIN map IN 
     LET red[d \in SUBSET dom] ==
         IF d = {} THEN ini 
         ELSE
@@ -120,27 +123,31 @@ ReduceMapRange(map, op(_,_), ini) ==
             op(map[x], red[d \ {x}])
     IN red[dom]
 
+Sum ==
+    LET op(req, acc) == req[2] + acc
+    IN ReduceMapRange(requests, op, 0)
+
 GetIds == 
-    LET red[rs \in SUBSET requests] == 
-        IF rs = {} THEN {}
-        ELSE 
-            LET x == CHOOSE x \in rs: TRUE IN 
-            {x[1]} \union red[rs \ {x}]
-    IN red[requests]
+    {req[1] : req \in requests}
+
+GetRequestById(id) ==
+    CHOOSE req \in {req \in requests: req[1] = id} : TRUE
+
+GetCreationByID(id) ==
+    GetRequestById(id)[3]
+
+GetAmountByID(id) ==
+    GetRequestById(id)[2]
+
+FilterNotByInitiator(initiator) ==
+    {req \in requests: req[4] /= initiator}
+                
 Deposit(amount) ==
     /\ previous_command' = (<<"deposit">>) 
     /\ amount > 0
     /\ balance + amount <= BALANCE_LIMIT
     /\ balance' = balance + amount
     /\ UNCHANGED <<block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests>>
-
-Sum == \* (id, amount, creation, initiator)
-    LET red[rs \in SUBSET requests] == 
-        IF rs = {} THEN 0
-        ELSE 
-            LET x == CHOOSE x \in rs: TRUE IN 
-                x[2] + red[rs \ {x}]
-    IN red[requests]
 
 Request(address2, id, amount) ==
     /\ previous_command' = (<<"request">>) 
@@ -151,55 +158,19 @@ Request(address2, id, amount) ==
     /\ requests' = requests \union {<<id, amount, block_number, address2>>}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
-Count(id) == \* (id, amount, creation, initiator)
-    LET red[rs \in SUBSET requests] == 
-        IF rs = {} THEN 0
-        ELSE 
-            LET x == CHOOSE x \in rs: TRUE IN 
-                IF x[1] = id THEN 1 + red[rs \ {x}]
-                ELSE red[rs \ {x}]
-    IN red[requests]
-
-GetCreationByID(id) == \* (id, amount, creation, initiator)
-    LET red[rs \in SUBSET requests] == 
-        IF rs = {} THEN 0
-        ELSE 
-            LET x == CHOOSE x \in rs: TRUE IN 
-                IF x[1] = id THEN x[3] + red[rs \ {x}]
-                ELSE red[rs \ {x}]
-    IN red[requests]
-
-GetAmountByID(id) == \* (id, amount, creation, initiator)
-    LET red[rs \in SUBSET requests] == 
-        IF rs = {} THEN 0
-        ELSE 
-            LET x == CHOOSE x \in rs: TRUE IN 
-                IF x[1] = id THEN x[2] + red[rs \ {x}]
-                ELSE red[rs \ {x}]
-    IN red[requests]
-
-GetWithoutID(id) == \* (id, amount, creation, initiator)
-    LET red[rs \in SUBSET requests] == 
-        IF rs = {} THEN {}
-        ELSE 
-            LET x == CHOOSE x \in rs: TRUE IN 
-                IF x[1] = id THEN red[rs \ {x}]
-                ELSE {x} \union red[rs \ {x}]
-    IN red[requests]   
-
 Withdraw(id) == 
     /\ previous_command' = (<<"withdraw">>) 
     /\ unlock_block <= block_number
-    /\ Count(id) = 1
+    /\ id \in GetIds
     /\ GetCreationByID(id) + delay <= block_number
     /\ balance' = balance - GetAmountByID(id)
-    /\ requests' = GetWithoutID(id)
+    /\ requests' = requests \ {GetRequestById(id)}
     /\ UNCHANGED <<block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
  
 CancelRequest(address1, id) == 
     /\ previous_command' = (<<"cancel_request">>) 
     /\ address1 \in tier_one_addresses
-    /\ requests' = requests \ GetWithoutID(id)
+    /\ requests' = requests \ {GetRequestById(id)}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 CancelAllRequests(address1) ==
@@ -208,19 +179,10 @@ CancelAllRequests(address1) ==
     /\ requests' = {}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
-GetWithoutInitiator(initiator) == \* (id, amount, creation, initiator)
-    LET red[rs \in SUBSET requests] == 
-        IF rs = {} THEN {}
-        ELSE 
-            LET x == CHOOSE x \in rs: TRUE IN 
-                IF x[4] = initiator THEN red[rs \ {x}]
-                ELSE {x} \union red[rs \ {x}]
-    IN red[requests]
-
-CancelSelfRequest(address2) ==
+CancelSelfRequest(address2, id) ==
     /\ previous_command' = (<<"cancel_self_request">>) 
     /\ address2 \in tier_two_addresses
-    /\ requests' = GetWithoutInitiator(address2)
+    /\ requests' = requests \ {GetRequestById(id)}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block>>
 
 Lock(address1, new_unlock_block) ==
@@ -252,7 +214,7 @@ RemoveTierTwoAddress(address1, remove_address2) ==
     /\ address1 \in tier_one_addresses
     /\ remove_address2 \in tier_two_addresses
     /\ tier_two_addresses' = tier_two_addresses \ {remove_address2}
-    /\ requests' = GetWithoutInitiator(remove_address2)
+    /\ requests' = FilterNotByInitiator(remove_address2)
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, delay, unlock_block>>
     
 
@@ -268,8 +230,8 @@ Next ==
         CancelRequest(address1, id)
     \/ \E address1 \in tier_one_addresses: 
         CancelAllRequests(address1) 
-    \/ \E address2 \in tier_two_addresses: 
-        CancelSelfRequest(address2) 
+    \/ \E <<address2, id>> \in tier_two_addresses \X REQUEST_IDS: 
+        CancelSelfRequest(address2, id) 
     \/ \E <<address1, new_unlock_block>> \in ADDRESSES \X (0..MAX_BLOCK_NUMBER): 
         Lock(address1, new_unlock_block)
     \/ \E <<address1, new_address1>> \in ADDRESSES \X ADDRESSES: 
