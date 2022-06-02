@@ -267,7 +267,7 @@ AdversaryAction ==
     \/ \E <<address2, id>> \in adversary_known_addresses \X REQUEST_IDS: 
         CancelSelfRequest(address2, id) 
     \/ \E <<address1, new_address2>> \in adversary_known_addresses \X ADDRESSES: 
-        AddTierTwoAddress(address1, new_address2)
+        AddTierTwoAddressForAdversary(address1, new_address2)
     \/ \E <<address1, remove_address2>> \in adversary_known_addresses \X ADDRESSES: 
         RemoveTierTwoAddress(address1, remove_address2) 
 
