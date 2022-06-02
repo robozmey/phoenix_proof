@@ -58,6 +58,7 @@ TypeOK ==
     /\ unlock_block \in 0..MAX_BLOCK_NUMBER
     /\ requests \in SUBSET request_type
     /\ owner_known_addresses \in SUBSET ADDRESSES
+    /\ adversary_known_addresses \in SUBSET ADDRESSES
 
 vars == <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, previous_command, special_vars>>
 
@@ -255,9 +256,17 @@ TypeTwoAttack(address) ==
     /\ adversary_known_addresses' = adversary_known_addresses \union {address}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, owner_known_addresses>>
 
+TypeOneAttackDefence ==
+    /\ SIMULATE_EVENT = "type_one_attack"
+    /\ balance[ADVERSARY_ADDRESS] = 0
+    /\ \E req \in requests: 
+        req[5] = ADVERSARY_ADDRESS
+    /\ \E address1 \in ADDRESSES:
+        Lock(address1, MAX_BLOCK_NUMBER + 1)
+
 AdversaryAction == 
-    \/ \E <<address2, amount>> \in adversary_known_addresses \X MONEY:
-        Request(address2, amount, ADVERSARY_ADDRESS)
+    \/ \E <<address2, amount, recipient>> \in adversary_known_addresses \X MONEY \X NETWORK_ADDRESSES:
+        Request(address2, amount, recipient)
     \/ \E id \in REQUEST_IDS: 
         Withdraw(id) 
     \/ \E <<address1, id>> \in adversary_known_addresses \X REQUEST_IDS: 
@@ -267,7 +276,7 @@ AdversaryAction ==
     \/ \E <<address2, id>> \in adversary_known_addresses \X REQUEST_IDS: 
         CancelSelfRequest(address2, id) 
     \/ \E <<address1, new_address2>> \in adversary_known_addresses \X ADDRESSES: 
-        AddTierTwoAddressForAdversary(address1, new_address2)
+        AddTierTwoAddress(address1, new_address2)
     \/ \E <<address1, remove_address2>> \in adversary_known_addresses \X ADDRESSES: 
         RemoveTierTwoAddress(address1, remove_address2) 
 
@@ -289,13 +298,12 @@ Spec == Init /\ [][Next]_vars
 \* WF = weak fairness
 
 Fairness ==
-    /\ \A <<address1, remove_address2>> \in ADDRESSES \X ADDRESSES: 
-        SF_vars(remove_address2 \in adversary_known_addresses => RemoveTierTwoAddress(address1, remove_address2))
+    /\ SF_vars(TypeOneAttackDefence)
     \* /\ \A s \in ADDRESSES: WF_vars(GetReimbursed(s))
     \* /\ WF_vars(Tick)
     
 
-FairSpec == Spec /\ TRUE
+FairSpec == Spec /\ Fairness
 
 --------------------------------------
 \* PROPERTIES
