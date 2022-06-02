@@ -40,7 +40,7 @@ request_type == \* (id, amount, creation, initiator, recipient)
     REQUEST_IDS 
     \X MONEY 
     \X (0..MAX_BLOCK_NUMBER)
-    \X tier_two_addresses
+    \X ADDRESSES
     \X NETWORK_ADDRESSES
 
 TypeOK ==
@@ -128,7 +128,7 @@ Withdraw(id) ==
     /\ UNCHANGED <<tier_one_addresses, tier_two_addresses, delay, unlock_block>>
  
 CancelRequest(address1, id) == 
-    /\ previous_command' = (<<"cancel_request", address1>>) 
+    /\ previous_command' = (<<"cancel_request", address1, id>>) 
     /\ address1 \in tier_one_addresses
     /\ id \in GetIds
     /\ requests' = requests \ {GetRequestById(id)}
@@ -220,6 +220,23 @@ Spec == Init /\ [][Next]_vars
 CannotWithdrawBeforeDelay ==
     [][previous_command'[1] = "withdraw" => \A r \in requests: (r[1] = previous_command'[2] => r[3] + delay <= block_number)]_previous_command
 \* 1.2.
+\* TierOneCanCancelAnyRequestAnyTime ==
+\*     []((requests /= {} /\ block_number < MAX_BLOCK_NUMBER) => LET b == block_number IN 
+\*         <>(
+\*             /\ block_number = b + 1
+\*             /\ previous_command[1] = "cancel_request"
+\*             /\ previous_command[2] \in tier_one_addresses))
+TierOneCanCancelAnyRequestAnyTime ==
+    []((requests /= {} /\ block_number < MAX_BLOCK_NUMBER) => 
+        LET b == block_number IN 
+            (\A r \in request_type:
+                r \in requests =>
+                (~[](
+                    /\ block_number = b + 1
+                    /\ previous_command[1] = "cancel_request"
+                    /\ previous_command[2] \in tier_one_addresses
+                    /\ previous_command[3] = r[1]))))
+                    \* _<<tier_one_addresses, requests>>
 \* 1.3.
 CannotChangeDelay ==
     \E d \in 0..MAX_BLOCK_NUMBER: [](delay = d)
