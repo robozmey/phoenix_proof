@@ -81,7 +81,7 @@ Tick ==
 --------------------------------------
 \* Actions
 
-Sum == \* (id, amount, creation, initiator)
+Sum ==
     LET red[rs \in SUBSET requests] == 
         IF rs = {} THEN 0
         ELSE 
@@ -256,17 +256,9 @@ TypeTwoAttack(address) ==
     /\ adversary_known_addresses' = adversary_known_addresses \union {address}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, owner_known_addresses>>
 
-TypeOneAttackDefence ==
-    /\ SIMULATE_EVENT = "type_one_attack"
-    /\ balance[ADVERSARY_ADDRESS] = 0
-    /\ \E req \in requests: 
-        req[5] = ADVERSARY_ADDRESS
-    /\ \E address1 \in ADDRESSES:
-        Lock(address1, MAX_BLOCK_NUMBER + 1)
-
 AdversaryAction == 
-    \/ \E <<address2, amount, recipient>> \in adversary_known_addresses \X MONEY \X NETWORK_ADDRESSES:
-        Request(address2, amount, recipient)
+    \/ \E <<address2, amount>> \in adversary_known_addresses \X MONEY:
+        Request(address2, amount, ADVERSARY_ADDRESS)
     \/ \E id \in REQUEST_IDS: 
         Withdraw(id) 
     \/ \E <<address1, id>> \in adversary_known_addresses \X REQUEST_IDS: 
@@ -276,7 +268,7 @@ AdversaryAction ==
     \/ \E <<address2, id>> \in adversary_known_addresses \X REQUEST_IDS: 
         CancelSelfRequest(address2, id) 
     \/ \E <<address1, new_address2>> \in adversary_known_addresses \X ADDRESSES: 
-        AddTierTwoAddress(address1, new_address2)
+        AddTierTwoAddressForAdversary(address1, new_address2)
     \/ \E <<address1, remove_address2>> \in adversary_known_addresses \X ADDRESSES: 
         RemoveTierTwoAddress(address1, remove_address2) 
 
@@ -288,32 +280,42 @@ EnvironmentAction ==
     \/ \E address \in ADDRESSES: 
         TypeTwoAttack(address)
 
-Next ==
+Actions ==
     \/ OwnerAction 
     \/ AdversaryAction
     \/ EnvironmentAction
 
+TypeOneAttackDefence ==
+    /\ SIMULATE_EVENT = "type_one_attack"
+    /\ \E <<address1, req>> \in owner_known_addresses \X requests: 
+        /\ req[5] = ADVERSARY_ADDRESS
+        /\ Lock(address1, MAX_BLOCK_NUMBER)
+
+TypeTwoAttackDefence ==
+    /\ SIMULATE_EVENT = "type_two_attack"
+    /\ \E <<address1, req>> \in owner_known_addresses \X requests: 
+        /\ req[5] = ADVERSARY_ADDRESS
+        /\ RemoveTierTwoAddress(address1, req[4])
+
+Defence ==
+    \/ TypeOneAttackDefence
+    \/ TypeTwoAttackDefence
+
+Next == 
+    IF ENABLED Defence
+    THEN Defence
+    ELSE Actions
+
 Spec == Init /\ [][Next]_vars
-
-\* WF = weak fairness
-
-Fairness ==
-    /\ SF_vars(TypeOneAttackDefence)
-    \* /\ \A s \in ADDRESSES: WF_vars(GetReimbursed(s))
-    \* /\ WF_vars(Tick)
-    
-
-FairSpec == Spec /\ Fairness
 
 --------------------------------------
 \* PROPERTIES
 
 RecoversKeyLoss ==
     TRUE
-RecoversTypeOneAttack == 
-    [](SIMULATE_EVENT = "type_one_attack" => balance[ADVERSARY_ADDRESS] = 0)
-RecoversTypeTwoAttack ==
-    [](SIMULATE_EVENT = "type_two_attack" => balance[ADVERSARY_ADDRESS] = 0)
+
+AttacksFail ==
+    [](balance[ADVERSARY_ADDRESS] = 0)
 
 \* 1. Base layer
 \* 1.1.
