@@ -368,11 +368,11 @@ FairSpec == Spec /\ Fairness
 \* PROPERTIES
 
 RecoversTierOneKeyLoss ==
-    [](previous_command[1] = "tier_one_key_loss" /\ owner_known_addresses \intersect tier_one_addresses = {} 
+    [](SIMULATE_EVENT = "tier_one_key_loss" /\ owner_known_addresses \intersect tier_one_addresses = {} 
         => <>[](balance[OWNER_ADDRESS] = 0))
 
 RecoversTierTwoKeyLoss == 
-    [](previous_command[1] = "tier_two_key_loss" /\ owner_known_addresses \intersect tier_two_addresses = {}
+    [](block_number < MAX_BLOCK_NUMBER /\ SIMULATE_EVENT = "tier_two_key_loss" /\ owner_known_addresses \intersect tier_two_addresses = {}
         => <>(owner_known_addresses \intersect tier_two_addresses /= {}))
 
 AttacksFail ==
@@ -381,19 +381,11 @@ AttacksFail ==
 \* 1. Base layer
 \* 1.1.
 CannotWithdrawBeforeDelay ==
-    [][previous_command'[1] = "withdraw" => \A r \in requests: (r[1] = previous_command'[2] => r[3] + delay <= block_number)]_previous_command
+    [](\A r \in requests: (r[3] + delay > block_number => ~ENABLED Withdraw(r[1])))
 \* 1.2.
 TierOneCanCancelAnyRequestAnyTime ==
-    []((requests /= {} /\ block_number < MAX_BLOCK_NUMBER) => 
-        LET b == block_number IN 
-            (\A r \in request_type:
-                r \in requests =>
-                (~[](
-                    /\ block_number = b + 1
-                    /\ previous_command[1] = "cancel_request"
-                    /\ previous_command[2] \in tier_one_addresses
-                    /\ previous_command[3] = r[1]))))
-    \* [](\A <<address1, req>> \in tier_one_addresses \X requests: ENABLED CancelRequest(address1, req[1]))
+    [](block_number < MAX_BLOCK_NUMBER
+        => \A <<address1, req>> \in tier_one_addresses \X requests: ENABLED CancelRequest(address1, req[1]))
 \* 1.3.
 CannotChangeDelay ==
     \E d \in 0..MAX_BLOCK_NUMBER: [](delay = d)
@@ -410,32 +402,36 @@ TierOneAndTwoSeparated ==
     [](tier_one_addresses \intersect  tier_two_addresses = {})
 \* 2.2.
 OnlyTierOneCanAddTierOne ==
-    [][previous_command'[1] = "add_tier_one" => previous_command'[2] \in tier_one_addresses]_previous_command
+    [](\A address \in ADDRESSES: address \notin tier_one_addresses 
+        => \A new_address1 \in ADDRESSES: ~ENABLED AddTierOneAddress(address, new_address1))
 \* 2.3.
 OnlyTierTwoCanRequest ==
-    [][previous_command'[1] = "request" => previous_command'[2] \in tier_two_addresses]_previous_command
+    [](\A address \in ADDRESSES: address \notin tier_two_addresses 
+        => \A <<amount, recipient>> \in MONEY \X NETWORK_ADDRESSES: ~ENABLED Request(address, amount, recipient))
 \* 2.4.
 TierTwoCanCancelOnlyItselfRequests ==
-    [][previous_command'[1] = "cancel_self_request" => 
-            /\ previous_command'[2] \in tier_two_addresses 
-            /\ GetRequestById(previous_command'[3])[4] = previous_command'[2]]_previous_command
+    [](\A address \in ADDRESSES: address \in tier_two_addresses 
+        => \A req \in requests: req[4] /= address => ~ENABLED CancelSelfRequest(address, req[1]))
     
 \* 3. Recovery layer
 \* 3.1.
 MoneyCannotLeaveLocked ==
-    [][block_number < unlock_block => previous_command'[1] /= "withdraw"]_previous_command
+    [](block_number < unlock_block => \A req \in requests: ~ENABLED Withdraw(req[1]))
 \* 3.2. 
 UnlockTimeOnlyIncrease ==
     [][unlock_block <= unlock_block']_unlock_block
 \* 3.3. 
 OnlyTierOneCanLock ==
-    [][previous_command'[1] = "lock" => previous_command'[2] \in tier_one_addresses]_previous_command
+    [](\A address \in ADDRESSES: address \notin tier_one_addresses 
+        => \A new_unlock_block \in 0..MAX_BLOCK_NUMBER: ~ENABLED Lock(address, new_unlock_block))
 \* 3.4.
 OnlyTierOneCanRemoveTierTwo ==
-    [][previous_command'[1] = "remove_tier_two" => previous_command'[2] \in tier_one_addresses]_previous_command
+    [](\A address \in ADDRESSES: address \notin tier_one_addresses 
+        => \A address2 \in ADDRESSES: ~ENABLED RemoveTierTwoAddress(address, address2))
 \* 3.5.  
 OnlyTierOneCanAddTierTwo ==
-    [][previous_command'[1] = "add_tier_two" => previous_command'[2] \in tier_one_addresses]_previous_command
+    [](\A address \in ADDRESSES: address \notin tier_one_addresses 
+        => \A address2 \in ADDRESSES: ~ENABLED AddTierTwoAddress(address, address2))
 
 \* 4. Tier-one minimization layer
 \* 4.1.
@@ -449,14 +445,17 @@ CannotSendMoneyToZero ==
     [](\A r \in requests: r[5] /= 0)
 \* 4.4.
 RemovingTierTwoRemovesItsRequests ==
-    [][previous_command'[1] = "remove_tier_two" => {req \in requests': req[4] /= previous_command'[2]} = requests']_<<previous_command, requests>>
-
+    [](block_number < MAX_BLOCK_NUMBER => 
+        \A <<address1, address2>> \in tier_one_addresses \X tier_two_addresses: 
+            ENABLED (
+                /\ RemoveTierTwoAddress(address1, address2) 
+                /\ ~\E req \in requests': req[4] = address2))
 
 
 
 --------------------------------------
 
-ADDRESSES_const == 0..6
+ADDRESSES_const == 0..(MAX_BLOCK_NUMBER+2)
 NETWORK_ADDRESSES_const == 1..3
 MONEY_const == 1..BALANCE_LIMIT
 REQUEST_IDS_const == 0..MAX_BLOCK_NUMBER
