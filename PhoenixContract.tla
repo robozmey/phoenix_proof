@@ -123,10 +123,14 @@ Request(address2, amount, recipient) ==
     /\ recipient /= 0
     /\ amount > 0
     /\ Sum + amount <= balance[OWNER_ADDRESS]
-    /\ balance[recipient] + amount <= BALANCE_LIMIT
     /\ address2 \in tier_two_addresses
     /\ requests' = requests \union {<<block_number, amount, block_number, address2, recipient>>}
     /\ UNCHANGED <<event, balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
+
+Min(a,b) ==
+    IF a < b
+    THEN a 
+    ELSE b
 
 Withdraw(id) == 
     /\ unlock_block <= block_number
@@ -135,7 +139,7 @@ Withdraw(id) ==
     /\ GetAddressByID(id) /= OWNER_ADDRESS
     /\ GetCreationByID(id) + delay <= block_number
     /\ LET balance1 == [balance EXCEPT ![OWNER_ADDRESS] = @ - GetAmountByID(id)]
-       IN balance' = [balance1 EXCEPT ![GetAddressByID(id)] = @ + GetAmountByID(id)]
+       IN balance' = [balance1 EXCEPT ![GetAddressByID(id)] = Min(@ + GetAmountByID(id), BALANCE_LIMIT)]
     /\ requests' = requests \ {GetRequestById(id)}
     /\ UNCHANGED <<event, tier_one_addresses, block_number, tier_two_addresses, delay, unlock_block, special_vars>>
  
@@ -190,6 +194,7 @@ AddTierTwoAddress(address1, new_address2) ==
 
 RemoveTierTwoAddress(address1, remove_address2) == 
     /\ Tick
+    /\ event /= "tier_one_key_loss"
     /\ address1 \in tier_one_addresses
     /\ remove_address2 \in tier_two_addresses
     /\ tier_two_addresses' = tier_two_addresses \ {remove_address2}
@@ -342,7 +347,7 @@ Defence ==
 Next == 
     IF ENABLED Defence
     THEN Defence
-    ELSE Actions \/ ActionTick
+    ELSE Actions
 
 Spec == Init /\ [][Next]_vars
 
@@ -432,7 +437,7 @@ CannotSendMoneyToZero ==
     [](\A r \in requests: r[5] /= 0)
 \* 4.4.
 RemovingTierTwoRemovesItsRequests ==
-    [](block_number < MAX_BLOCK_NUMBER => 
+    [](block_number < MAX_BLOCK_NUMBER /\ event /= "tier_one_key_loss" => 
         \A <<address1, address2>> \in tier_one_addresses \X tier_two_addresses: 
             ENABLED (
                 /\ RemoveTierTwoAddress(address1, address2) 
