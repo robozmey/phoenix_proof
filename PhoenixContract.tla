@@ -316,15 +316,15 @@ TierTwoLossDefence ==
         AddTierTwoAddress(address1, new_address2)
 
 TypeOneAttackDefence ==
-    /\ SIMULATE_EVENT = "type_one_attack"
     /\ \E <<address1, req>> \in owner_known_addresses \X requests: 
         /\ req[5] = ADVERSARY_ADDRESS
+        /\ req[4] \notin owner_known_addresses
         /\ Lock(address1, MAX_BLOCK_NUMBER)
 
 TypeTwoAttackDefence ==
-    /\ SIMULATE_EVENT = "type_two_attack"
     /\ \E <<address1, req>> \in owner_known_addresses \X requests: 
         /\ req[5] = ADVERSARY_ADDRESS
+        /\ req[4] \in owner_known_addresses
         /\ RemoveTierTwoAddress(address1, req[4])
 
 Defence ==
