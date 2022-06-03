@@ -13,8 +13,7 @@ CONSTANTS
     MAX_BLOCK_NUMBER,
     REQUEST_IDS,
     DELAY_CONST,
-    NETWORK_ADDRESSES,
-    SIMULATE_EVENT
+    NETWORK_ADDRESSES
 
 ASSUMPTION BALANCE_LIMIT \in Nat
 ASSUMPTION ADDRESSES \subseteq Nat
@@ -36,7 +35,8 @@ VARIABLES
     unlock_block,                     \* U
     requests,                         \* R
     owner_known_addresses,
-    adversary_known_addresses
+    adversary_known_addresses,
+    event
 
 special_vars == <<owner_known_addresses, adversary_known_addresses>>
 
@@ -46,6 +46,8 @@ request_type == \* (id, amount, creation, initiator, recipient)
     \X (0..MAX_BLOCK_NUMBER)
     \X ADDRESSES
     \X NETWORK_ADDRESSES
+
+events == { "no_event", "tier_one_key_loss", "tier_two_key_loss", "type_one_attack", "type_two_attack" }
 
 TypeOK ==
     /\ balance \in [NETWORK_ADDRESSES -> 0..BALANCE_LIMIT]
@@ -58,8 +60,10 @@ TypeOK ==
     /\ requests \in SUBSET request_type
     /\ owner_known_addresses \in SUBSET ADDRESSES
     /\ adversary_known_addresses \in SUBSET ADDRESSES
+    /\ event \in events
 
-vars == <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, special_vars>>
+vars == <<balance, block_number, tier_one_addresses, tier_two_addresses, 
+        delay, unlock_block, requests, special_vars, event>>
 
 Init ==
     /\ balance = [addr \in NETWORK_ADDRESSES |-> 0]
@@ -71,6 +75,7 @@ Init ==
     /\ requests = {}
     /\ owner_known_addresses = {INITIAL_TIER_ONE_KEY, INITIAL_TIER_TWO_KEY}
     /\ adversary_known_addresses = {}
+    /\ event \in events
 
 --------------------------------------
 \* Actions
@@ -110,7 +115,7 @@ Deposit(amount) ==
     /\ owner_known_addresses \intersect tier_one_addresses /= {}    /\ amount > 0
     /\ balance[OWNER_ADDRESS] + amount <= BALANCE_LIMIT
     /\ balance' = [balance EXCEPT ![OWNER_ADDRESS] = @ + amount]
-    /\ UNCHANGED <<tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, special_vars>>
+    /\ UNCHANGED <<event, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, special_vars>>
 
 Request(address2, amount, recipient) ==
     /\ Tick
@@ -121,7 +126,7 @@ Request(address2, amount, recipient) ==
     /\ balance[recipient] + amount <= BALANCE_LIMIT
     /\ address2 \in tier_two_addresses
     /\ requests' = requests \union {<<block_number, amount, block_number, address2, recipient>>}
-    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
+    /\ UNCHANGED <<event, balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
 
 Withdraw(id) == 
     /\ unlock_block <= block_number
@@ -132,20 +137,20 @@ Withdraw(id) ==
     /\ LET balance1 == [balance EXCEPT ![OWNER_ADDRESS] = @ - GetAmountByID(id)]
        IN balance' = [balance1 EXCEPT ![GetAddressByID(id)] = @ + GetAmountByID(id)]
     /\ requests' = requests \ {GetRequestById(id)}
-    /\ UNCHANGED <<tier_one_addresses, block_number, tier_two_addresses, delay, unlock_block, special_vars>>
+    /\ UNCHANGED <<event, tier_one_addresses, block_number, tier_two_addresses, delay, unlock_block, special_vars>>
  
 CancelRequest(address1, id) == 
     /\ Tick
     /\ address1 \in tier_one_addresses
     /\ id \in GetIds
     /\ requests' = requests \ {GetRequestById(id)}
-    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
+    /\ UNCHANGED <<event, balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
 
 CancelAllRequests(address1) ==
     /\ Tick
     /\ address1 \in tier_one_addresses
     /\ requests' = {}
-    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
+    /\ UNCHANGED <<event, balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
 
 CancelSelfRequest(address2, id) ==
     /\ Tick
@@ -153,17 +158,17 @@ CancelSelfRequest(address2, id) ==
     /\ id \in GetIds
     /\ GetRequestById(id)[4] = address2
     /\ requests' = requests \ {GetRequestById(id)}
-    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
+    /\ UNCHANGED <<event, balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
 
 Lock(address1, new_unlock_block) ==
     /\ Tick
-    /\ SIMULATE_EVENT /= "tier_one_key_loss"
+    /\ event /= "tier_one_key_loss"
     /\ address1 \in tier_one_addresses
     /\ new_unlock_block <= MAX_BLOCK_NUMBER
     /\ new_unlock_block > unlock_block
     /\ new_unlock_block > block_number
     /\ unlock_block' = new_unlock_block
-    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, requests, special_vars>>
+    /\ UNCHANGED <<event, balance, tier_one_addresses, tier_two_addresses, delay, requests, special_vars>>
     
 AddTierOneAddress(address1, new_address1) == 
     /\ Tick
@@ -172,7 +177,7 @@ AddTierOneAddress(address1, new_address1) ==
     /\ new_address1 \notin tier_two_addresses
     /\ tier_one_addresses' = tier_one_addresses \union {new_address1}
     /\ owner_known_addresses' = owner_known_addresses \union {new_address1}
-    /\ UNCHANGED <<balance, tier_two_addresses, delay, unlock_block, requests, adversary_known_addresses>>
+    /\ UNCHANGED <<event, balance, tier_two_addresses, delay, unlock_block, requests, adversary_known_addresses>>
 
 AddTierTwoAddress(address1, new_address2) == 
     /\ Tick
@@ -181,7 +186,7 @@ AddTierTwoAddress(address1, new_address2) ==
     /\ new_address2 \notin tier_two_addresses
     /\ tier_two_addresses' = tier_two_addresses \union {new_address2}
     /\ owner_known_addresses' = owner_known_addresses \union {new_address2}
-    /\ UNCHANGED <<balance, tier_one_addresses, delay, unlock_block, requests, adversary_known_addresses>>
+    /\ UNCHANGED <<event, balance, tier_one_addresses, delay, unlock_block, requests, adversary_known_addresses>>
 
 RemoveTierTwoAddress(address1, remove_address2) == 
     /\ Tick
@@ -190,7 +195,7 @@ RemoveTierTwoAddress(address1, remove_address2) ==
     /\ tier_two_addresses' = tier_two_addresses \ {remove_address2}
     /\ owner_known_addresses' = owner_known_addresses \ {remove_address2}
     /\ requests' = FilterNotByInitiator(remove_address2)
-    /\ UNCHANGED <<balance, tier_one_addresses, delay, unlock_block, adversary_known_addresses>>
+    /\ UNCHANGED <<event, balance, tier_one_addresses, delay, unlock_block, adversary_known_addresses>>
 
 OwnerAction ==
     \/ \E amount \in MONEY: 
@@ -215,22 +220,22 @@ OwnerAction ==
         RemoveTierTwoAddress(address1, remove_address2) 
 
 TierOneKeyLoss(address) ==
-    /\ SIMULATE_EVENT = "tier_one_key_loss"
+    /\ event = "tier_one_key_loss"
     /\ block_number < MAX_BLOCK_NUMBER - delay
     /\ Cardinality(owner_known_addresses) > 1
     /\ address \in owner_known_addresses
     /\ address \in tier_one_addresses
     /\ owner_known_addresses' = owner_known_addresses \ {address}
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, adversary_known_addresses>>
+    /\ UNCHANGED <<event, balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, adversary_known_addresses>>
 
 TierTwoKeyLoss(address) ==
-    /\ SIMULATE_EVENT = "tier_two_key_loss"
+    /\ event = "tier_two_key_loss"
     /\ block_number < MAX_BLOCK_NUMBER
     /\ Cardinality(owner_known_addresses) > 1
     /\ address \in owner_known_addresses
     /\ address \in tier_two_addresses
     /\ owner_known_addresses' = owner_known_addresses \ {address}
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, adversary_known_addresses>>
+    /\ UNCHANGED <<event, balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, adversary_known_addresses>>
 
 AddTierTwoAddressForAdversary(address1, new_address2) == 
     /\ Tick
@@ -239,19 +244,19 @@ AddTierTwoAddressForAdversary(address1, new_address2) ==
     /\ new_address2 \notin tier_two_addresses
     /\ tier_two_addresses' = tier_two_addresses \union {new_address2}
     /\ adversary_known_addresses' = adversary_known_addresses \union {new_address2}
-    /\ UNCHANGED <<balance, tier_one_addresses, delay, unlock_block, requests, owner_known_addresses>>
+    /\ UNCHANGED <<event, balance, tier_one_addresses, delay, unlock_block, requests, owner_known_addresses>>
 
 TypeOneAttack(address) ==
-    /\ SIMULATE_EVENT = "type_one_attack"
+    /\ event = "type_one_attack"
     /\ address \in tier_one_addresses
     /\ adversary_known_addresses' = adversary_known_addresses \union {address}
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, owner_known_addresses>>
+    /\ UNCHANGED <<event, balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, owner_known_addresses>>
 
 TypeTwoAttack(address) ==
-    /\ SIMULATE_EVENT = "type_two_attack"
+    /\ event = "type_two_attack"
     /\ address \in tier_two_addresses
     /\ adversary_known_addresses' = adversary_known_addresses \union {address}
-    /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, owner_known_addresses>>
+    /\ UNCHANGED <<event, balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, owner_known_addresses>>
 
 AdversaryAction == 
     \/ \E <<address2, amount>> \in adversary_known_addresses \X MONEY:
@@ -281,7 +286,8 @@ EnvironmentAction ==
 
 ActionTick ==
     /\ Tick
-    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, special_vars>>
+    /\ UNCHANGED <<event, balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, special_vars>>
+
 Actions ==
     \/ OwnerAction 
     \/ AdversaryAction
@@ -299,7 +305,7 @@ TierOneLossDefence2 ==
         Withdraw(req[1])
 
 TierOneLossDefence ==
-    /\ SIMULATE_EVENT = "tier_one_key_loss"
+    /\ event = "tier_one_key_loss"
     /\ block_number <= MAX_BLOCK_NUMBER
     /\ balance[OWNER_ADDRESS] > 0
     /\ owner_known_addresses \intersect tier_one_addresses = {}
@@ -309,7 +315,7 @@ TierOneLossDefence ==
         \/ (~(ENABLED (TierOneLossDefence1 \/ TierOneLossDefence2)) /\ ActionTick))
 
 TierTwoLossDefence == 
-    /\ SIMULATE_EVENT = "tier_two_key_loss"
+    /\ event = "tier_two_key_loss"
     /\ block_number < MAX_BLOCK_NUMBER
     /\ owner_known_addresses \intersect tier_two_addresses = {}
     /\ \E <<address1, new_address2>> \in owner_known_addresses \X ADDRESSES: 
@@ -349,11 +355,11 @@ FairSpec == Spec /\ Fairness
 \* PROPERTIES
 
 RecoversTierOneKeyLoss ==
-    [](SIMULATE_EVENT = "tier_one_key_loss" /\ owner_known_addresses \intersect tier_one_addresses = {} 
+    [](event = "tier_one_key_loss" /\ owner_known_addresses \intersect tier_one_addresses = {} 
         => <>[](balance[OWNER_ADDRESS] = 0))
 
 RecoversTierTwoKeyLoss == 
-    [](block_number < MAX_BLOCK_NUMBER /\ SIMULATE_EVENT = "tier_two_key_loss" /\ owner_known_addresses \intersect tier_two_addresses = {}
+    [](block_number < MAX_BLOCK_NUMBER /\ event = "tier_two_key_loss" /\ owner_known_addresses \intersect tier_two_addresses = {}
         => <>(owner_known_addresses \intersect tier_two_addresses /= {}))
 
 AttacksFail ==
