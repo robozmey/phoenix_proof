@@ -35,7 +35,6 @@ VARIABLES
     delay,                            \* D
     unlock_block,                     \* U
     requests,                         \* R
-    previous_command,
     owner_known_addresses,
     adversary_known_addresses
 
@@ -60,7 +59,7 @@ TypeOK ==
     /\ owner_known_addresses \in SUBSET ADDRESSES
     /\ adversary_known_addresses \in SUBSET ADDRESSES
 
-vars == <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, previous_command, special_vars>>
+vars == <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, special_vars>>
 
 Init ==
     /\ balance = [addr \in NETWORK_ADDRESSES |-> 0]
@@ -70,7 +69,6 @@ Init ==
     /\ delay = DELAY_CONST
     /\ unlock_block = 0
     /\ requests = {}
-    /\ previous_command = <<"initial command">>
     /\ owner_known_addresses = {INITIAL_TIER_ONE_KEY, INITIAL_TIER_TWO_KEY}
     /\ adversary_known_addresses = {}
 
@@ -109,9 +107,7 @@ FilterNotByInitiator(initiator) ==
                 
 Deposit(amount) ==
     /\ Tick
-    /\ owner_known_addresses \intersect tier_one_addresses /= {}
-    /\ previous_command' = (<<"deposit", amount>>) 
-    /\ amount > 0
+    /\ owner_known_addresses \intersect tier_one_addresses /= {}    /\ amount > 0
     /\ balance[OWNER_ADDRESS] + amount <= BALANCE_LIMIT
     /\ balance' = [balance EXCEPT ![OWNER_ADDRESS] = @ + amount]
     /\ UNCHANGED <<tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, special_vars>>
@@ -120,7 +116,6 @@ Request(address2, amount, recipient) ==
     /\ Tick
     /\ recipient /= OWNER_ADDRESS
     /\ recipient /= 0
-    /\ previous_command' = (<<"request", address2>>) 
     /\ amount > 0
     /\ Sum + amount <= balance[OWNER_ADDRESS]
     /\ balance[recipient] + amount <= BALANCE_LIMIT
@@ -129,7 +124,6 @@ Request(address2, amount, recipient) ==
     /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
 
 Withdraw(id) == 
-    /\ previous_command' = (<<"withdraw", id>>) 
     /\ unlock_block <= block_number
     /\ block_number < MAX_BLOCK_NUMBER
     /\ id \in GetIds
@@ -142,7 +136,6 @@ Withdraw(id) ==
  
 CancelRequest(address1, id) == 
     /\ Tick
-    /\ previous_command' = (<<"cancel_request", address1, id>>) 
     /\ address1 \in tier_one_addresses
     /\ id \in GetIds
     /\ requests' = requests \ {GetRequestById(id)}
@@ -150,14 +143,12 @@ CancelRequest(address1, id) ==
 
 CancelAllRequests(address1) ==
     /\ Tick
-    /\ previous_command' =(<<"cancel_all_requests", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ requests' = {}
     /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
 
 CancelSelfRequest(address2, id) ==
     /\ Tick
-    /\ previous_command' = (<<"cancel_self_request", address2, id>>) 
     /\ address2 \in tier_two_addresses
     /\ id \in GetIds
     /\ GetRequestById(id)[4] = address2
@@ -167,7 +158,6 @@ CancelSelfRequest(address2, id) ==
 Lock(address1, new_unlock_block) ==
     /\ Tick
     /\ SIMULATE_EVENT /= "tier_one_key_loss"
-    /\ previous_command' = (<<"lock", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ new_unlock_block <= MAX_BLOCK_NUMBER
     /\ new_unlock_block > unlock_block
@@ -177,7 +167,6 @@ Lock(address1, new_unlock_block) ==
     
 AddTierOneAddress(address1, new_address1) == 
     /\ Tick
-    /\ previous_command' = (<<"add_tier_one", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ new_address1 \notin tier_one_addresses
     /\ new_address1 \notin tier_two_addresses
@@ -187,7 +176,6 @@ AddTierOneAddress(address1, new_address1) ==
 
 AddTierTwoAddress(address1, new_address2) == 
     /\ Tick
-    /\ previous_command' = (<<"add_tier_two", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ new_address2 \notin tier_one_addresses
     /\ new_address2 \notin tier_two_addresses
@@ -197,7 +185,6 @@ AddTierTwoAddress(address1, new_address2) ==
 
 RemoveTierTwoAddress(address1, remove_address2) == 
     /\ Tick
-    /\ previous_command' = (<<"remove_tier_two", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ remove_address2 \in tier_two_addresses
     /\ tier_two_addresses' = tier_two_addresses \ {remove_address2}
@@ -233,7 +220,6 @@ TierOneKeyLoss(address) ==
     /\ Cardinality(owner_known_addresses) > 1
     /\ address \in owner_known_addresses
     /\ address \in tier_one_addresses
-    /\ previous_command' = <<"tier_one_key_loss">>
     /\ owner_known_addresses' = owner_known_addresses \ {address}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, adversary_known_addresses>>
 
@@ -243,13 +229,11 @@ TierTwoKeyLoss(address) ==
     /\ Cardinality(owner_known_addresses) > 1
     /\ address \in owner_known_addresses
     /\ address \in tier_two_addresses
-    /\ previous_command' = <<"tier_two_key_loss">>
     /\ owner_known_addresses' = owner_known_addresses \ {address}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, adversary_known_addresses>>
 
 AddTierTwoAddressForAdversary(address1, new_address2) == 
     /\ Tick
-    /\ previous_command' = (<<"add_tier_two", address1>>) 
     /\ address1 \in tier_one_addresses
     /\ new_address2 \notin tier_one_addresses
     /\ new_address2 \notin tier_two_addresses
@@ -260,14 +244,12 @@ AddTierTwoAddressForAdversary(address1, new_address2) ==
 TypeOneAttack(address) ==
     /\ SIMULATE_EVENT = "type_one_attack"
     /\ address \in tier_one_addresses
-    /\ previous_command' = <<"type_one_attack">>
     /\ adversary_known_addresses' = adversary_known_addresses \union {address}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, owner_known_addresses>>
 
 TypeTwoAttack(address) ==
     /\ SIMULATE_EVENT = "type_two_attack"
     /\ address \in tier_two_addresses
-    /\ previous_command' = <<"type_two_attack">>
     /\ adversary_known_addresses' = adversary_known_addresses \union {address}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, owner_known_addresses>>
 
@@ -299,7 +281,6 @@ EnvironmentAction ==
 
 ActionTick ==
     /\ Tick
-    /\ previous_command' = <<"tick">>
     /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, special_vars>>
 Actions ==
     \/ OwnerAction 
