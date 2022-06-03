@@ -74,12 +74,12 @@ Init ==
     /\ owner_known_addresses = {INITIAL_TIER_ONE_KEY, INITIAL_TIER_TWO_KEY}
     /\ adversary_known_addresses = {}
 
+--------------------------------------
+\* Actions
+
 Tick ==
     /\ block_number + 1 <= MAX_BLOCK_NUMBER
     /\ block_number' = block_number + 1
-
---------------------------------------
-\* Actions
 
 Sum ==
     LET red[rs \in SUBSET requests] == 
@@ -109,6 +109,7 @@ FilterNotByInitiator(initiator) ==
                 
 Deposit(amount) ==
     /\ Tick
+    /\ owner_known_addresses \intersect tier_one_addresses /= {}
     /\ previous_command' = (<<"deposit", amount>>) 
     /\ amount > 0
     /\ balance[OWNER_ADDRESS] + amount <= BALANCE_LIMIT
@@ -128,16 +129,16 @@ Request(address2, amount, recipient) ==
     /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
 
 Withdraw(id) == 
-    /\ Tick
     /\ previous_command' = (<<"withdraw", id>>) 
     /\ unlock_block <= block_number
+    /\ block_number < MAX_BLOCK_NUMBER
     /\ id \in GetIds
     /\ GetAddressByID(id) /= OWNER_ADDRESS
     /\ GetCreationByID(id) + delay <= block_number
     /\ LET balance1 == [balance EXCEPT ![OWNER_ADDRESS] = @ - GetAmountByID(id)]
        IN balance' = [balance1 EXCEPT ![GetAddressByID(id)] = @ + GetAmountByID(id)]
     /\ requests' = requests \ {GetRequestById(id)}
-    /\ UNCHANGED <<tier_one_addresses, tier_two_addresses, delay, unlock_block, special_vars>>
+    /\ UNCHANGED <<tier_one_addresses, block_number, tier_two_addresses, delay, unlock_block, special_vars>>
  
 CancelRequest(address1, id) == 
     /\ Tick
@@ -165,8 +166,10 @@ CancelSelfRequest(address2, id) ==
 
 Lock(address1, new_unlock_block) ==
     /\ Tick
+    /\ SIMULATE_EVENT /= "tier_one_key_loss"
     /\ previous_command' = (<<"lock", address1>>) 
     /\ address1 \in tier_one_addresses
+    /\ new_unlock_block <= MAX_BLOCK_NUMBER
     /\ new_unlock_block > unlock_block
     /\ new_unlock_block > block_number
     /\ unlock_block' = new_unlock_block
@@ -224,11 +227,23 @@ OwnerAction ==
     \/ \E <<address1, remove_address2>> \in owner_known_addresses \X ADDRESSES: 
         RemoveTierTwoAddress(address1, remove_address2) 
 
-KeyLoss(address) ==
-    /\ SIMULATE_EVENT = "key_loss"
+TierOneKeyLoss(address) ==
+    /\ SIMULATE_EVENT = "tier_one_key_loss"
+    /\ block_number < MAX_BLOCK_NUMBER - delay
     /\ Cardinality(owner_known_addresses) > 1
     /\ address \in owner_known_addresses
-    /\ previous_command' = <<"key_loss">>
+    /\ address \in tier_one_addresses
+    /\ previous_command' = <<"tier_one_key_loss">>
+    /\ owner_known_addresses' = owner_known_addresses \ {address}
+    /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, adversary_known_addresses>>
+
+TierTwoKeyLoss(address) ==
+    /\ SIMULATE_EVENT = "tier_two_key_loss"
+    /\ block_number < MAX_BLOCK_NUMBER
+    /\ Cardinality(owner_known_addresses) > 1
+    /\ address \in owner_known_addresses
+    /\ address \in tier_two_addresses
+    /\ previous_command' = <<"tier_two_key_loss">>
     /\ owner_known_addresses' = owner_known_addresses \ {address}
     /\ UNCHANGED <<balance, block_number, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, adversary_known_addresses>>
 
@@ -274,16 +289,50 @@ AdversaryAction ==
 
 EnvironmentAction ==
     \/ \E address \in ADDRESSES: 
-        KeyLoss(address)
+        TierOneKeyLoss(address)
+    \/ \E address \in ADDRESSES: 
+        TierTwoKeyLoss(address)
     \/ \E address \in ADDRESSES: 
         TypeOneAttack(address)
     \/ \E address \in ADDRESSES: 
         TypeTwoAttack(address)
 
+ActionTick ==
+    /\ Tick
+    /\ previous_command' = <<"tick">>
+    /\ UNCHANGED <<balance, tier_one_addresses, tier_two_addresses, delay, unlock_block, requests, special_vars>>
 Actions ==
     \/ OwnerAction 
     \/ AdversaryAction
     \/ EnvironmentAction
+    \/ ActionTick
+
+TierOneLossDefence1 ==
+    /\ balance[OWNER_ADDRESS] > 0
+    /\ \E <<address2, recipient>> \in owner_known_addresses \X (NETWORK_ADDRESSES \ {ADVERSARY_ADDRESS}):
+        Request(address2, balance[OWNER_ADDRESS] - Sum, recipient) 
+
+TierOneLossDefence2 ==
+    /\ requests /= {}
+    /\ \E req \in requests:
+        Withdraw(req[1])
+
+TierOneLossDefence ==
+    /\ SIMULATE_EVENT = "tier_one_key_loss"
+    /\ block_number <= MAX_BLOCK_NUMBER
+    /\ balance[OWNER_ADDRESS] > 0
+    /\ owner_known_addresses \intersect tier_one_addresses = {}
+    /\ (
+        \/ TierOneLossDefence1 
+        \/ TierOneLossDefence2 
+        \/ (~(ENABLED (TierOneLossDefence1 \/ TierOneLossDefence2)) /\ ActionTick))
+
+TierTwoLossDefence == 
+    /\ SIMULATE_EVENT = "tier_two_key_loss"
+    /\ block_number < MAX_BLOCK_NUMBER
+    /\ owner_known_addresses \intersect tier_two_addresses = {}
+    /\ \E <<address1, new_address2>> \in owner_known_addresses \X ADDRESSES: 
+        AddTierTwoAddress(address1, new_address2)
 
 TypeOneAttackDefence ==
     /\ SIMULATE_EVENT = "type_one_attack"
@@ -298,21 +347,33 @@ TypeTwoAttackDefence ==
         /\ RemoveTierTwoAddress(address1, req[4])
 
 Defence ==
+    \/ TierOneLossDefence
+    \/ TierTwoLossDefence
     \/ TypeOneAttackDefence
     \/ TypeTwoAttackDefence
 
 Next == 
     IF ENABLED Defence
     THEN Defence
-    ELSE Actions
+    ELSE Actions \/ ActionTick
 
 Spec == Init /\ [][Next]_vars
+
+Fairness ==
+    WF_vars(Actions)
+
+FairSpec == Spec /\ Fairness
 
 --------------------------------------
 \* PROPERTIES
 
-RecoversKeyLoss ==
-    TRUE
+RecoversTierOneKeyLoss ==
+    [](previous_command[1] = "tier_one_key_loss" /\ owner_known_addresses \intersect tier_one_addresses = {} 
+        => <>[](balance[OWNER_ADDRESS] = 0))
+
+RecoversTierTwoKeyLoss == 
+    [](previous_command[1] = "tier_two_key_loss" /\ owner_known_addresses \intersect tier_two_addresses = {}
+        => <>(owner_known_addresses \intersect tier_two_addresses /= {}))
 
 AttacksFail ==
     [](balance[ADVERSARY_ADDRESS] = 0)
@@ -322,13 +383,6 @@ AttacksFail ==
 CannotWithdrawBeforeDelay ==
     [][previous_command'[1] = "withdraw" => \A r \in requests: (r[1] = previous_command'[2] => r[3] + delay <= block_number)]_previous_command
 \* 1.2.
-\* TierOneCanCancelAnyRequestAnyTime ==
-\*     []((requests /= {} /\ block_number < MAX_BLOCK_NUMBER) => LET b == block_number IN 
-\*         <>(
-\*             /\ block_number = b + 1                    \* _<<tier_one_addresses, requests>>
-
-\*             /\ previous_command[1] = "cancel_request"
-\*             /\ previous_command[2] \in tier_one_addresses))
 TierOneCanCancelAnyRequestAnyTime ==
     []((requests /= {} /\ block_number < MAX_BLOCK_NUMBER) => 
         LET b == block_number IN 
@@ -339,6 +393,7 @@ TierOneCanCancelAnyRequestAnyTime ==
                     /\ previous_command[1] = "cancel_request"
                     /\ previous_command[2] \in tier_one_addresses
                     /\ previous_command[3] = r[1]))))
+    \* [](\A <<address1, req>> \in tier_one_addresses \X requests: ENABLED CancelRequest(address1, req[1]))
 \* 1.3.
 CannotChangeDelay ==
     \E d \in 0..MAX_BLOCK_NUMBER: [](delay = d)
@@ -365,16 +420,13 @@ TierTwoCanCancelOnlyItselfRequests ==
             /\ previous_command'[2] \in tier_two_addresses 
             /\ GetRequestById(previous_command'[3])[4] = previous_command'[2]]_previous_command
     
-
-
 \* 3. Recovery layer
 \* 3.1.
 MoneyCannotLeaveLocked ==
-    \* [][block_number < unlock_block => balance <= balance']_balance
     [][block_number < unlock_block => previous_command'[1] /= "withdraw"]_previous_command
 \* 3.2. 
 UnlockTimeOnlyIncrease ==
-    [][unlock_block <= unlock_block]_block_number
+    [][unlock_block <= unlock_block']_unlock_block
 \* 3.3. 
 OnlyTierOneCanLock ==
     [][previous_command'[1] = "lock" => previous_command'[2] \in tier_one_addresses]_previous_command
@@ -404,9 +456,9 @@ RemovingTierTwoRemovesItsRequests ==
 
 --------------------------------------
 
-ADDRESSES_const == 0..4
+ADDRESSES_const == 0..6
 NETWORK_ADDRESSES_const == 1..3
-MONEY_const == 1..1
+MONEY_const == 1..BALANCE_LIMIT
 REQUEST_IDS_const == 0..MAX_BLOCK_NUMBER
 
 ====
