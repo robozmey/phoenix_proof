@@ -1,2 +1,13 @@
 states
 PhoenixContract.out
+slides/common
+slides/_minted-slides
+slides/Makefile
+slides/slides.aux
+slides/slides.log
+slides/slides.nav
+slides/slides.out
+slides/slides.snm
+slides/slides.synctex.gz
+slides/slides.toc
+slides/slides.vrb
